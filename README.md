@@ -7,18 +7,8 @@ A curated collection of resource docs covering undocumented features, explanatio
 
 ## Documentation
 
-### Claude Code (@anthropic-ai/claude-code)
-
-- [README](AI/@anthropic-ai/claude-code/README.md) - Overview and introduction
-- [All Prompts](AI/@anthropic-ai/claude-code/claude-code-all-prompts.md) - Complete collection of system prompts
-- [Architecture](AI/@anthropic-ai/claude-code/claude-code-architecture.md) - System architecture and design
-- [Docs vs NPX Comparison](AI/@anthropic-ai/claude-code/claude-code-docs-vs-npx-comparison.md) - Documentation comparison analysis
-- [Gotchas and Hidden Issues](AI/@anthropic-ai/claude-code/claude-code-gotchas-and-hidden-issues.md) - Known issues and edge cases
-- [Implementation Review](AI/@anthropic-ai/claude-code/claude-code-implementation-review.md) - Code implementation analysis
-- [Internal Tools Deep Dive](AI/@anthropic-ai/claude-code/claude-code-internal-tools-deep-dive.md) - Internal tooling documentation
-- [NPX Tools Extraction](AI/@anthropic-ai/claude-code/claude-code-npx-tools-extraction.md) - NPX tools reference
-- [Undocumented Features and Prompts](AI/@anthropic-ai/claude-code/claude-code-undocumented-features-and-prompts.md) - Hidden features and capabilities
-- [Verification Report](AI/@anthropic-ai/claude-code/claude-code-verification-report.md) - Testing and verification results
+- [Claude Code](research/AI/@anthropic-ai/claude-code/README.md) - Complete claude-code documentation
+- [Claude Agent SDK](research/AI/@anthropic-ai/claude-agent-sdk/README.md) - Complete claude-agent-sdk documentation
 
 ### Request a doc
 
