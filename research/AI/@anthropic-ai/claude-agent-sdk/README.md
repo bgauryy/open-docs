@@ -48,6 +48,7 @@ console.log(result.messages);
 | **[System Prompts](./claude-agent-sdk-prompts-complete.md)** | Internal prompts and agent behavior |
 | **[Undocumented Features](./claude-agent-sdk-undocumented.md)** | Hidden features and internal APIs |
 | **[Design & Architecture](./claude-agent-sdk-design.md)** | Architecture overview and patterns |
+| **[Internal Flows](./internal_flows.md)** | Tool internal implementation and execution flows |
 | **[CLI Analysis](./CLI-ANALYSIS.md)** | Deep dive into the CLI implementation |
 
 ---
