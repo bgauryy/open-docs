@@ -1,0 +1,1627 @@
+# Claude Agent SDK - Implementation Gotchas & Hidden Features
+
+**SDK Version:** 0.1.22
+**Package:** @anthropic-ai/claude-agent-sdk
+
+## Table of Contents
+1. [Executive Summary](#executive-summary)
+2. [Undocumented APIs](#undocumented-apis)
+3. [Hidden Features](#hidden-features)
+4. [Implementation Gotchas](#implementation-gotchas)
+5. [Advanced Configurations](#advanced-configurations)
+6. [Hook System Deep Dive](#hook-system-deep-dive)
+7. [Permission System Details](#permission-system-details)
+8. [Tool Schema Details](#tool-schema-details)
+9. [Message Types & Flow](#message-types--flow)
+10. [Dependencies Analysis](#dependencies-analysis)
+11. [Tips & Best Practices](#tips--best-practices)
+
+---
+
+## Executive Summary
+
+The Claude Agent SDK (formerly Claude Code SDK) is a comprehensive agentic framework that wraps Claude with file system operations, shell commands, MCP servers, and sophisticated permission/hook systems. This document covers undocumented features, implementation patterns, and gotchas found in the SDK.
+
+**Key Findings:**
+- 9 hook events for lifecycle management (most undocumented)
+- 4 permission modes with complex update mechanisms
+- Advanced session management (forking, resumption, compact boundaries)
+- Hidden control APIs on Query interface
+- Sophisticated MCP integration (4 transport types)
+- Built-in tools for agents, notebooks, web operations
+
+---
+
+## Undocumented APIs
+
+### Query Interface Control Methods
+
+The `Query` interface (which extends `AsyncGenerator<SDKMessage, void>`) has **undocumented runtime control methods**:
+
+```typescript
+interface Query extends AsyncGenerator<SDKMessage, void> {
+  // Runtime control - only supported with streaming input/output
+  interrupt(): Promise<void>;
+  setPermissionMode(mode: PermissionMode): Promise<void>;
+  setModel(model?: string): Promise<void>;
+  setMaxThinkingTokens(maxThinkingTokens: number | null): Promise<void>;
+
+  // Introspection methods
+  supportedCommands(): Promise<SlashCommand[]>;
+  supportedModels(): Promise<ModelInfo[]>;
+  mcpServerStatus(): Promise<McpServerStatus[]>;
+  accountInfo(): Promise<AccountInfo>;
+}
+```
+
+**Gotcha:** These control methods are **only supported when streaming input/output is used**. Using them with non-streaming queries will likely fail silently or throw errors.
+
+**Use Case:** You can dynamically change the model mid-conversation:
+```typescript
+const query = sdk.query({ prompt: "...", options: {...} });
+for await (const message of query) {
+  if (someCondition) {
+    await query.setModel('opus'); // Switch to a more powerful model
+  }
+}
+```
+
+### AccountInfo API
+
+Undocumented account introspection:
+
+```typescript
+export type AccountInfo = {
+  email?: string;
+  organization?: string;
+  subscriptionType?: string;
+  tokenSource?: string;      // Where the token came from
+  apiKeySource?: string;      // API key origin
+};
+
+// Usage:
+const info = await query.accountInfo();
+```
+
+**Gotcha:** All fields are optional - the SDK may not have access to all account details depending on auth method.
+
+### MCP Server Status Monitoring
+
+```typescript
+const statuses = await query.mcpServerStatus();
+// Returns array of:
+type McpServerStatus = {
+  name: string;
+  status: 'connected' | 'failed' | 'needs-auth' | 'pending';
+  serverInfo?: { name: string; version: string; };
+};
+```
+
+---
+
+## Hidden Features
+
+### 1. Session Forking
+
+```typescript
+options: {
+  resume: "session-id-here",
+  forkSession: true,  // HIDDEN: Fork instead of continuing
+}
+```
+
+**What it does:** When resuming a session, create a new session ID instead of continuing the previous one. This allows you to branch conversations.
+
+**Use Case:** A/B testing different prompts from the same starting point.
+
+### 2. Resume from Specific Message
+
+```typescript
+options: {
+  resume: "session-id",
+  resumeSessionAt: "message-uuid",  // HIDDEN: Resume up to this message
+}
+```
+
+**What it does:** Only resume messages up to and including the assistant message with this `message.id`. The message ID must be from `SDKAssistantMessage.message.id`.
+
+**Use Case:** "Undo" recent messages and branch from an earlier point in the conversation.
+
+### 3. Permission Prompt Tool Name
+
+```typescript
+options: {
+  permissionPromptToolName: "custom-tool-name",  // HIDDEN
+}
+```
+
+**What it does:** Customize which tool is used for permission prompts. Not documented what the valid values are.
+
+### 4. Strict MCP Config Mode
+
+```typescript
+options: {
+  strictMcpConfig: true,  // HIDDEN: Enforce strict MCP validation
+}
+```
+
+**What it does:** Enable strict validation of MCP server configurations. May reject configurations that would otherwise work in lenient mode.
+
+### 5. Synthetic User Messages
+
+```typescript
+type SDKUserMessage = {
+  type: 'user';
+  message: APIUserMessage;
+  parent_tool_use_id: string | null;
+  isSynthetic?: boolean;  // HIDDEN: System-generated user messages
+};
+```
+
+**What it does:** Marks user messages that didn't originate from the user directly but were generated by the system.
+
+**Gotcha:** The SDK can inject "user" messages that aren't actually from the user. Check `isSynthetic` to distinguish.
+
+### 6. Message Replay Tracking
+
+```typescript
+export type SDKUserMessageReplay = SDKMessageBase & SDKUserMessageContent & {
+  isReplay: true;  // HIDDEN: Prevent duplicate messages
+};
+```
+
+**What it does:** Used internally to prevent duplicate messages. If you see a message with `isReplay: true`, it's an acknowledgment of a message already in the array.
+
+### 7. Executable Runtime Selection
+
+```typescript
+options: {
+  executable: 'bun' | 'deno' | 'node',  // Choose runtime
+  executableArgs: string[],              // Pass args to runtime
+}
+```
+
+**What it does:** Choose which JavaScript runtime to use (bun, deno, or node) and pass custom arguments.
+
+**Use Case:** Performance tuning or using Deno's security features.
+
+### 8. Custom Claude Code Executable Path
+
+```typescript
+options: {
+  pathToClaudeCodeExecutable: "/custom/path/to/claude",
+}
+```
+
+**What it does:** Override the path to the Claude Code executable. Useful for testing different versions or custom builds.
+
+### 9. Setting Sources
+
+```typescript
+export type SettingSource = 'user' | 'project' | 'local';
+
+options: {
+  settingSources: ['user', 'project'],  // Choose which settings to load
+}
+```
+
+**What it does:** Control which configuration sources to load settings from.
+
+---
+
+## Implementation Gotchas
+
+### 1. System Prompt Options Are Mutually Exclusive
+
+**CRITICAL GOTCHA:**
+
+```typescript
+export type Options = Omit<BaseOptions, 'customSystemPrompt' | 'appendSystemPrompt'> & {
+  systemPrompt?: string | {
+    type: 'preset';
+    preset: 'claude_code';
+    append?: string;
+  };
+};
+```
+
+The main SDK options type **explicitly omits** `customSystemPrompt` and `appendSystemPrompt` from `BaseOptions`, replacing them with a single `systemPrompt` field.
+
+**What this means:**
+- You CANNOT use `customSystemPrompt` or `appendSystemPrompt` from the main entry point
+- You must use the new `systemPrompt` option instead
+- `systemPrompt` can be either a string OR an object with preset + append
+
+**Correct usage:**
+```typescript
+// Option 1: Custom system prompt (full replacement)
+options: { systemPrompt: "You are a helpful assistant..." }
+
+// Option 2: Use preset with optional append
+options: {
+  systemPrompt: {
+    type: 'preset',
+    preset: 'claude_code',
+    append: "Additional instructions..."
+  }
+}
+```
+
+### 2. Agent Model Inheritance
+
+```typescript
+export type AgentDefinition = {
+  description: string;
+  tools?: string[];
+  prompt: string;
+  model?: 'sonnet' | 'opus' | 'haiku' | 'inherit';  // Note 'inherit'!
+};
+```
+
+**Gotcha:** Agents can use `model: 'inherit'` to inherit the parent model. Not documented what happens if parent also uses 'inherit'.
+
+### 3. Permission Update Destinations
+
+```typescript
+type PermissionUpdateDestination = 'userSettings' | 'projectSettings' | 'localSettings' | 'session';
+```
+
+**Gotcha:** Permission updates can target 4 different scopes:
+- `userSettings` - Global user settings
+- `projectSettings` - Project-specific settings
+- `localSettings` - Local workspace settings
+- `session` - Current session only (lost on restart)
+
+**Critical:** Choosing the wrong destination can lead to permissions persisting when you don't expect (or vice versa).
+
+### 4. Hook Async Timeout
+
+```typescript
+export type AsyncHookJSONOutput = {
+  async: true;
+  asyncTimeout?: number;  // UNDOCUMENTED
+};
+```
+
+**Gotcha:** Hooks can be async with a custom timeout. No documentation on:
+- Default timeout value
+- What happens when timeout expires
+- Whether hook results are awaited or fire-and-forget
+
+### 5. Tool Use Parent Tracking
+
+```typescript
+export type SDKUserMessage = {
+  type: 'user';
+  message: APIUserMessage;
+  parent_tool_use_id: string | null;  // IMPORTANT
+};
+```
+
+**Gotcha:** Every message tracks its `parent_tool_use_id`. This creates a tree structure of tool uses and responses. Essential for:
+- Understanding conversation flow
+- Implementing custom tool chaining
+- Debugging tool execution order
+
+### 6. Permission Suggestions Pattern
+
+```typescript
+export type CanUseTool = (
+  toolName: string,
+  input: Record<string, unknown>,
+  options: {
+    signal: AbortSignal;
+    suggestions?: PermissionUpdate[];  // IMPORTANT
+  }
+) => Promise<PermissionResult>;
+```
+
+**Gotcha:** The SDK provides `suggestions` for permission updates. The docs say:
+
+> "It is recommended that you use these suggestions rather than attempting to re-derive them from the tool use input, as the suggestions may include other permission changes such as adding directories or incorporate complex tool-use logic such as bash commands."
+
+**Best Practice:** Always use the provided suggestions when implementing "always allow" flows.
+
+### 7. Bash Timeout Limits
+
+```typescript
+export interface BashInput {
+  command: string;
+  timeout?: number;  // Max 600000 (10 minutes)
+  // ...
+}
+```
+
+**Gotcha:** Bash commands have a hard limit of 10 minutes (600,000ms). Longer-running commands must use background execution.
+
+### 8. File Read Pagination
+
+```typescript
+export interface FileReadInput {
+  file_path: string;
+  offset?: number;   // Line number to start
+  limit?: number;    // Number of lines to read
+}
+```
+
+**Gotcha:** The SDK expects you to paginate large files manually using `offset` and `limit`. No automatic chunking.
+
+**Best Practice:** Read first 100 lines, analyze, then read more if needed.
+
+### 9. Compact Boundary Messages
+
+```typescript
+export type SDKCompactBoundaryMessage = SDKMessageBase & {
+  type: 'system';
+  subtype: 'compact_boundary';
+  compact_metadata: {
+    trigger: 'manual' | 'auto';
+    pre_tokens: number;
+  };
+};
+```
+
+**Gotcha:** The SDK can automatically "compact" (summarize/prune) conversation history. It emits special `compact_boundary` messages to mark where this happened.
+
+**Critical:** If you're storing messages externally, you need to handle these boundaries correctly to understand conversation flow.
+
+### 10. Hook Response Messages
+
+```typescript
+export type SDKHookResponseMessage = SDKMessageBase & {
+  type: 'system';
+  subtype: 'hook_response';
+  hook_name: string;
+  hook_event: string;
+  stdout: string;
+  stderr: string;
+  exit_code?: number;
+};
+```
+
+**Gotcha:** Hook responses are emitted as special system messages. You need to filter for these if you're processing message streams.
+
+---
+
+## Advanced Configurations
+
+### MCP Server Transport Types
+
+The SDK supports **4 different MCP transport types**:
+
+#### 1. STDIO (Default)
+```typescript
+mcpServers: {
+  "my-server": {
+    type: 'stdio',  // Optional, this is default
+    command: '/path/to/server',
+    args: ['--flag', 'value'],
+    env: { KEY: 'value' }
+  }
+}
+```
+
+#### 2. SSE (Server-Sent Events)
+```typescript
+mcpServers: {
+  "remote-server": {
+    type: 'sse',
+    url: 'https://example.com/mcp',
+    headers: { 'Authorization': 'Bearer token' }
+  }
+}
+```
+
+#### 3. HTTP
+```typescript
+mcpServers: {
+  "http-server": {
+    type: 'http',
+    url: 'https://api.example.com/mcp',
+    headers: { 'X-API-Key': 'key' }
+  }
+}
+```
+
+#### 4. SDK (In-Process)
+```typescript
+import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
+
+const myTool = tool(
+  'my_tool',
+  'Tool description',
+  { param: z.string() },
+  async (args) => ({ content: [{ type: 'text', text: 'result' }] })
+);
+
+const server = createSdkMcpServer({
+  name: 'my-sdk-server',
+  version: '1.0.0',
+  tools: [myTool]
+});
+
+options: {
+  mcpServers: {
+    "my-sdk-server": server  // Pass the instance directly
+  }
+}
+```
+
+**Gotcha:** SDK transport runs in the same process - faster but shares memory/resources.
+
+### Permission Modes
+
+```typescript
+export type PermissionMode = 'default' | 'acceptEdits' | 'bypassPermissions' | 'plan';
+```
+
+#### Mode Behaviors:
+
+1. **`default`** - Standard permission prompts for all tools
+2. **`acceptEdits`** - Auto-accept file edit operations (dangerous!)
+3. **`bypassPermissions`** - Skip all permission checks (very dangerous!)
+4. **`plan`** - Special mode for planning (see ExitPlanMode tool)
+
+**Gotcha:** You can change permission mode mid-session:
+```typescript
+await query.setPermissionMode('bypassPermissions');
+```
+
+### Extra Args System
+
+```typescript
+options: {
+  extraArgs: Record<string, string | null>,
+}
+```
+
+**Gotcha:** `null` values are significant - they might remove/unset args. Not documented what args are supported.
+
+---
+
+## Hook System Deep Dive
+
+### Available Hook Events
+
+```typescript
+export const HOOK_EVENTS = [
+  "PreToolUse",
+  "PostToolUse",
+  "Notification",
+  "UserPromptSubmit",
+  "SessionStart",
+  "SessionEnd",
+  "Stop",
+  "SubagentStop",
+  "PreCompact"
+] as const;
+```
+
+### Hook Event Details
+
+#### 1. PreToolUse
+```typescript
+type PreToolUseHookInput = BaseHookInput & {
+  hook_event_name: 'PreToolUse';
+  tool_name: string;
+  tool_input: unknown;
+};
+```
+
+**Purpose:** Intercept tool execution before it runs.
+
+**Hook-Specific Output:**
+```typescript
+hookSpecificOutput: {
+  hookEventName: 'PreToolUse';
+  permissionDecision?: 'allow' | 'deny' | 'ask';
+  permissionDecisionReason?: string;
+  updatedInput?: Record<string, unknown>;  // Modify tool input!
+}
+```
+
+**Use Cases:**
+- Custom permission logic
+- Input validation/transformation
+- Audit logging
+- Rate limiting
+
+#### 2. PostToolUse
+```typescript
+type PostToolUseHookInput = BaseHookInput & {
+  hook_event_name: 'PostToolUse';
+  tool_name: string;
+  tool_input: unknown;
+  tool_response: unknown;  // See the result
+};
+```
+
+**Hook-Specific Output:**
+```typescript
+hookSpecificOutput: {
+  hookEventName: 'PostToolUse';
+  additionalContext?: string;  // Add context to the conversation
+}
+```
+
+**Use Cases:**
+- Result transformation
+- Error handling
+- Success metrics
+- Inject additional context based on results
+
+#### 3. Notification
+```typescript
+type NotificationHookInput = BaseHookInput & {
+  hook_event_name: 'Notification';
+  message: string;
+  title?: string;
+};
+```
+
+**Purpose:** Intercept system notifications.
+
+**Use Cases:**
+- Custom notification delivery (Slack, email, etc.)
+- Notification filtering
+- Alert aggregation
+
+#### 4. UserPromptSubmit
+```typescript
+type UserPromptSubmitHookInput = BaseHookInput & {
+  hook_event_name: 'UserPromptSubmit';
+  prompt: string;
+};
+```
+
+**Hook-Specific Output:**
+```typescript
+hookSpecificOutput: {
+  hookEventName: 'UserPromptSubmit';
+  additionalContext?: string;  // Add context to user's prompt
+}
+```
+
+**Use Cases:**
+- Prompt enhancement
+- Auto-include project context
+- Input validation
+- Cost estimation before execution
+
+#### 5. SessionStart
+```typescript
+type SessionStartHookInput = BaseHookInput & {
+  hook_event_name: 'SessionStart';
+  source: 'startup' | 'resume' | 'clear' | 'compact';
+};
+```
+
+**Hook-Specific Output:**
+```typescript
+hookSpecificOutput: {
+  hookEventName: 'SessionStart';
+  additionalContext?: string;
+}
+```
+
+**Use Cases:**
+- Initialize resources
+- Load project-specific context
+- Different behavior based on `source`
+
+#### 6. SessionEnd
+```typescript
+export const EXIT_REASONS: string[];  // Not const-typed!
+
+type SessionEndHookInput = BaseHookInput & {
+  hook_event_name: 'SessionEnd';
+  reason: ExitReason;
+};
+```
+
+**Gotcha:** `EXIT_REASONS` is a runtime array, not a const. Possible values not documented.
+
+**Use Cases:**
+- Cleanup resources
+- Save state
+- Analytics
+- Generate summaries
+
+#### 7. Stop / SubagentStop
+```typescript
+type StopHookInput = BaseHookInput & {
+  hook_event_name: 'Stop';
+  stop_hook_active: boolean;
+};
+
+type SubagentStopHookInput = BaseHookInput & {
+  hook_event_name: 'SubagentStop';
+  stop_hook_active: boolean;
+};
+```
+
+**Purpose:** Handle graceful shutdown requests.
+
+**Gotcha:** `stop_hook_active` indicates if the stop hook itself is active (prevents infinite loops?).
+
+#### 8. PreCompact
+```typescript
+type PreCompactHookInput = BaseHookInput & {
+  hook_event_name: 'PreCompact';
+  trigger: 'manual' | 'auto';
+  custom_instructions: string | null;
+};
+```
+
+**Purpose:** Runs before conversation history compaction/summarization.
+
+**Use Cases:**
+- Preserve important messages
+- Custom summarization logic
+- Save full history before compaction
+
+### Hook Matchers
+
+```typescript
+export interface HookCallbackMatcher {
+  matcher?: string;  // UNDOCUMENTED pattern
+  hooks: HookCallback[];
+}
+
+options: {
+  hooks: {
+    PreToolUse: [
+      {
+        matcher: "pattern?",  // What patterns are supported?
+        hooks: [callback1, callback2]
+      }
+    ]
+  }
+}
+```
+
+**Gotcha:** The `matcher` field is completely undocumented. Likely filters which tools trigger the hook, but syntax unknown.
+
+### Hook Output Control
+
+```typescript
+export type SyncHookJSONOutput = {
+  continue?: boolean;        // Continue execution?
+  suppressOutput?: boolean;  // Hide hook output from user?
+  stopReason?: string;       // Why stopping?
+  decision?: 'approve' | 'block';  // Approve or block action?
+  systemMessage?: string;    // Message to inject?
+  reason?: string;           // Reason for decision
+  hookSpecificOutput?: {...};
+};
+```
+
+**Powerful Controls:**
+- `continue: false` - Halt execution
+- `suppressOutput: true` - Silent operation
+- `decision: 'block'` - Override permission system
+- `systemMessage` - Inject context into conversation
+
+---
+
+## Permission System Details
+
+### Permission Update Types
+
+#### 1. addRules
+```typescript
+{
+  type: 'addRules',
+  rules: [{ toolName: 'Bash', ruleContent: 'npm install *' }],
+  behavior: 'allow',
+  destination: 'session'
+}
+```
+
+**What it does:** Add new permission rules without removing existing ones.
+
+#### 2. replaceRules
+```typescript
+{
+  type: 'replaceRules',
+  rules: [{ toolName: 'FileWrite', ruleContent: '*.md' }],
+  behavior: 'allow',
+  destination: 'projectSettings'
+}
+```
+
+**What it does:** Replace all existing rules with new ones.
+
+**Gotcha:** This is destructive - wipes previous rules.
+
+#### 3. removeRules
+```typescript
+{
+  type: 'removeRules',
+  rules: [{ toolName: 'Bash', ruleContent: 'rm -rf *' }],
+  behavior: 'deny',
+  destination: 'session'
+}
+```
+
+**What it does:** Remove specific rules.
+
+#### 4. setMode
+```typescript
+{
+  type: 'setMode',
+  mode: 'bypassPermissions',
+  destination: 'session'
+}
+```
+
+**What it does:** Change the permission mode.
+
+**Gotcha:** Can escalate to `bypassPermissions` programmatically!
+
+#### 5. addDirectories / removeDirectories
+```typescript
+{
+  type: 'addDirectories',
+  directories: ['/safe/path', '/another/path'],
+  destination: 'projectSettings'
+}
+```
+
+**What it does:** Manage allowed directory access.
+
+**Use Case:** Sandbox the agent to specific directories.
+
+### Permission Rule Content
+
+```typescript
+export type PermissionRuleValue = {
+  toolName: string;
+  ruleContent?: string;  // Optional pattern
+};
+```
+
+**Gotcha:** `ruleContent` is optional. When omitted, the rule applies to ALL uses of that tool.
+
+**Examples:**
+```typescript
+// Allow all Bash commands
+{ toolName: 'Bash' }
+
+// Allow only safe Bash commands
+{ toolName: 'Bash', ruleContent: 'ls *' }
+{ toolName: 'Bash', ruleContent: 'git status' }
+
+// Allow file writes to markdown only
+{ toolName: 'FileWrite', ruleContent: '*.md' }
+```
+
+**Pattern syntax not documented** - likely glob patterns based on examples.
+
+### Permission Denial Tracking
+
+```typescript
+export type SDKPermissionDenial = {
+  tool_name: string;
+  tool_use_id: string;
+  tool_input: Record<string, unknown>;
+};
+
+// Included in result messages:
+type SDKResultMessage = {
+  // ...
+  permission_denials: SDKPermissionDenial[];
+};
+```
+
+**Use Case:** Track which tools were blocked and why. Essential for debugging permission issues.
+
+---
+
+## Tool Schema Details
+
+### Agent Tool (Subagent Creation)
+
+```typescript
+export interface AgentInput {
+  description: string;      // 3-5 word description
+  prompt: string;           // The task
+  subagent_type: string;    // UNDOCUMENTED - what types exist?
+}
+```
+
+**Gotcha:** `subagent_type` values are not documented. Likely values based on codebase:
+- "general" / "default"
+- "code" / "coding"
+- "research"
+- Custom types from `agents` config?
+
+**Agent Configuration:**
+```typescript
+options: {
+  agents: {
+    "my-custom-agent": {
+      description: "Specialized agent description",
+      tools: ['Bash', 'FileRead', 'FileWrite'],
+      prompt: "You are a specialized agent that...",
+      model: 'opus'  // or 'sonnet', 'haiku', 'inherit'
+    }
+  }
+}
+```
+
+### Bash Tool Background Execution
+
+```typescript
+export interface BashInput {
+  command: string;
+  timeout?: number;          // Max 600000ms
+  description?: string;      // For logging/UX
+  run_in_background?: boolean;  // IMPORTANT
+}
+```
+
+**Pattern for long-running commands:**
+
+```typescript
+// 1. Start in background
+await useTool('Bash', {
+  command: 'npm test',
+  run_in_background: true
+});
+// Returns { bash_id: 'shell-123' }
+
+// 2. Poll for output
+const result = await useTool('BashOutput', {
+  bash_id: 'shell-123',
+  filter: 'PASS|FAIL'  // Optional regex filter
+});
+
+// 3. Kill if needed
+await useTool('KillShell', { shell_id: 'shell-123' });
+```
+
+**Gotcha:** Background shells persist across tool uses. You must kill them manually or they'll keep running.
+
+### Grep Tool Output Modes
+
+```typescript
+export interface GrepInput {
+  pattern: string;
+  output_mode?: "content" | "files_with_matches" | "count";
+  // ...
+}
+```
+
+**Mode Behaviors:**
+
+1. **`files_with_matches`** (default) - Just file paths
+2. **`content`** - Matching lines with context (supports -A, -B, -C, -n, head_limit)
+3. **`count`** - Count of matches per file
+
+**Gotcha:** Context options (-A, -B, -C, -n) are **ignored** unless `output_mode: "content"`.
+
+### Notebook Edit Operations
+
+```typescript
+export interface NotebookEditInput {
+  notebook_path: string;
+  cell_id?: string;
+  new_source: string;
+  cell_type?: "code" | "markdown";
+  edit_mode?: "replace" | "insert" | "delete";
+}
+```
+
+**Edit Mode Behaviors:**
+
+1. **`replace`** (default) - Replace cell content
+2. **`insert`** - Insert new cell after `cell_id` (or at start if omitted)
+3. **`delete`** - Delete the cell (ignores `new_source`)
+
+**Gotcha:** When using `edit_mode: 'insert'`, `cell_type` is **required**.
+
+### Web Tools
+
+#### WebFetch
+```typescript
+export interface WebFetchInput {
+  url: string;
+  prompt: string;  // Process fetched content with this prompt
+}
+```
+
+**Gotcha:** The `prompt` is run through an AI model to extract/process the web content. This costs tokens!
+
+#### WebSearch
+```typescript
+export interface WebSearchInput {
+  query: string;
+  allowed_domains?: string[];   // Whitelist
+  blocked_domains?: string[];   // Blacklist
+}
+```
+
+**Use Case:** Restrict searches to trusted sources or block unreliable domains.
+
+### MCP Tool (Dynamic)
+
+```typescript
+export interface McpInput {
+  [k: string]: unknown;  // Completely dynamic!
+}
+```
+
+**Gotcha:** MCP tools have dynamic schemas. The actual input schema depends on the MCP server's tool definitions.
+
+### ExitPlanMode Tool
+
+```typescript
+export interface ExitPlanModeInput {
+  plan: string;  // Markdown-formatted plan
+}
+```
+
+**Purpose:** When in `permissionMode: 'plan'`, the agent uses this tool to submit a plan for user approval.
+
+**Use Case:** Get agent to plan before executing. Review and approve the plan before allowing execution.
+
+---
+
+## Message Types & Flow
+
+### Message Type Hierarchy
+
+```typescript
+export type SDKMessage =
+  | SDKAssistantMessage
+  | SDKUserMessage
+  | SDKUserMessageReplay
+  | SDKResultMessage
+  | SDKSystemMessage
+  | SDKPartialAssistantMessage
+  | SDKCompactBoundaryMessage
+  | SDKHookResponseMessage;
+```
+
+### Message Flow Pattern
+
+```
+1. SDKSystemMessage (subtype: 'init')
+   ↓
+2. SDKUserMessage
+   ↓
+3. SDKPartialAssistantMessage (stream_event) - multiple
+   ↓
+4. SDKAssistantMessage (complete)
+   ↓
+5. SDKUserMessage (tool results, parent_tool_use_id set)
+   ↓
+... repeat 3-5 ...
+   ↓
+6. SDKResultMessage (success or error)
+```
+
+### Stream Events
+
+```typescript
+export type SDKPartialAssistantMessage = SDKMessageBase & {
+  type: 'stream_event';
+  event: RawMessageStreamEvent;  // From @anthropic-ai/sdk
+  parent_tool_use_id: string | null;
+};
+```
+
+**Gotcha:** When `includePartialMessages: true`, you get **every streaming event** from the API. This includes:
+- `message_start`
+- `content_block_start`
+- `content_block_delta`
+- `content_block_stop`
+- `message_delta`
+- `message_stop`
+
+**Pattern for handling streams:**
+```typescript
+let currentText = '';
+for await (const msg of query) {
+  if (msg.type === 'stream_event') {
+    if (msg.event.type === 'content_block_delta') {
+      currentText += msg.event.delta.text;
+      // Update UI in real-time
+    }
+  }
+}
+```
+
+### Result Message Subtypes
+
+```typescript
+type SDKResultMessage =
+  | { subtype: 'success'; result: string; /* ... */ }
+  | { subtype: 'error_max_turns' | 'error_during_execution'; /* no result field */ };
+```
+
+**Gotcha:** Error results don't have a `result` field. Check `subtype` before accessing it.
+
+**Cost Tracking:**
+```typescript
+result.total_cost_usd;  // Total cost in USD
+result.modelUsage;      // Per-model breakdown
+result.usage;           // Token usage
+```
+
+### System Message Init
+
+```typescript
+export type SDKSystemMessage = SDKMessageBase & {
+  type: 'system';
+  subtype: 'init';
+  agents?: string[];              // Available agents
+  apiKeySource: ApiKeySource;     // Where API key came from
+  claude_code_version: string;    // Version info
+  cwd: string;                    // Working directory
+  tools: string[];                // Available tools
+  mcp_servers: { name: string; status: string; }[];
+  model: string;                  // Active model
+  permissionMode: PermissionMode; // Current permission mode
+  slash_commands: string[];       // Available commands
+  output_style: string;           // Output formatting
+};
+```
+
+**Use Case:** Extract this message to understand the session configuration.
+
+---
+
+## Dependencies Analysis
+
+### Peer Dependencies
+
+```json
+"peerDependencies": {
+  "zod": "^3.24.1"
+}
+```
+
+**Gotcha:** Zod is a **peer dependency** - you must install it yourself. The SDK uses Zod for:
+- MCP tool schema validation
+- Custom tool definitions
+- Input validation
+
+### Optional Dependencies
+
+```json
+"optionalDependencies": {
+  "@img/sharp-darwin-arm64": "^0.33.5",
+  "@img/sharp-darwin-x64": "^0.33.5",
+  "@img/sharp-linux-arm": "^0.33.5",
+  "@img/sharp-linux-arm64": "^0.33.5",
+  "@img/sharp-linux-x64": "^0.33.5",
+  "@img/sharp-win32-x64": "^0.33.5"
+}
+```
+
+**Purpose:** Sharp library for image processing (screenshots, image analysis).
+
+**Gotcha:** These are optional - install the one for your platform for image support. The SDK gracefully degrades without them.
+
+### Hidden Dependencies
+
+Looking at imports in the type definitions:
+
+```typescript
+import { MessageParam } from '@anthropic-ai/sdk/resources';
+import { BetaMessage, BetaUsage, BetaRawMessageStreamEvent } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs';
+import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z, ZodRawShape, ZodObject } from 'zod';
+```
+
+**Actual runtime dependencies** (not listed in package.json):
+- `@anthropic-ai/sdk` - For API types
+- `@modelcontextprotocol/sdk` - For MCP integration
+
+**Gotcha:** These are bundled in the 521KB `sdk.mjs` file - you don't need to install them separately.
+
+### Bundled Vendor Files
+
+```
+vendor/
+  claude-code-jetbrains-plugin/
+  ripgrep/
+yoga.wasm
+```
+
+**Gotcha:** The SDK bundles:
+- **ripgrep** - For fast code search (Grep tool)
+- **yoga.wasm** - For layout/terminal rendering
+- **JetBrains plugin** - Unknown purpose (IDE integration?)
+
+---
+
+## Tips & Best Practices
+
+### 1. Always Check Message Types
+
+```typescript
+for await (const msg of query) {
+  switch (msg.type) {
+    case 'assistant':
+      // Handle assistant messages
+      break;
+    case 'system':
+      if (msg.subtype === 'init') {
+        // Extract configuration
+      } else if (msg.subtype === 'compact_boundary') {
+        // Handle conversation compaction
+      }
+      break;
+    case 'result':
+      if (msg.subtype === 'success') {
+        console.log(msg.result);
+      } else {
+        console.error('Error:', msg.subtype);
+      }
+      break;
+  }
+}
+```
+
+### 2. Use Hooks for Cross-Cutting Concerns
+
+Don't put logging/metrics in your main code. Use hooks:
+
+```typescript
+const loggingHook: HookCallback = async (input) => {
+  if (input.hook_event_name === 'PreToolUse') {
+    console.log(`Tool: ${input.tool_name}`, input.tool_input);
+  }
+  return { continue: true };
+};
+
+options: {
+  hooks: {
+    PreToolUse: [{ hooks: [loggingHook] }]
+  }
+}
+```
+
+### 3. Implement Custom Permission Logic
+
+```typescript
+const customPermissions: CanUseTool = async (toolName, input, { suggestions }) => {
+  // Custom validation
+  if (toolName === 'Bash' && input.command.includes('rm -rf')) {
+    return {
+      behavior: 'deny',
+      message: 'Destructive commands are not allowed',
+      interrupt: true
+    };
+  }
+
+  // Allow with suggestions
+  return {
+    behavior: 'allow',
+    updatedInput: input,
+    updatedPermissions: suggestions  // Use SDK suggestions
+  };
+};
+```
+
+### 4. Handle Session Resumption Correctly
+
+```typescript
+// Save session ID from init message
+let sessionId: string | undefined;
+
+for await (const msg of query) {
+  if (msg.type === 'system' && msg.subtype === 'init') {
+    sessionId = msg.session_id;
+  }
+}
+
+// Later, resume from that session
+const resumed = sdk.query({
+  prompt: "continue...",
+  options: { resume: sessionId }
+});
+```
+
+### 5. Monitor Costs in Real-Time
+
+```typescript
+let totalCost = 0;
+
+for await (const msg of query) {
+  if (msg.type === 'result') {
+    totalCost += msg.total_cost_usd;
+    console.log(`Total cost: $${totalCost.toFixed(4)}`);
+
+    // Per-model breakdown
+    for (const [model, usage] of Object.entries(msg.modelUsage)) {
+      console.log(`${model}: ${usage.inputTokens} in, ${usage.outputTokens} out, $${usage.costUSD}`);
+    }
+  }
+}
+```
+
+### 6. Use Agents for Specialization
+
+```typescript
+options: {
+  agents: {
+    "code-reviewer": {
+      description: "Reviews code for best practices",
+      tools: ['FileRead', 'Grep'],  // Limited toolset
+      prompt: "You are a senior code reviewer. Focus on...",
+      model: 'opus'  // Use smarter model for reviews
+    },
+    "test-writer": {
+      description: "Writes unit tests",
+      tools: ['FileRead', 'FileWrite', 'Bash'],
+      prompt: "You write comprehensive unit tests...",
+      model: 'sonnet'  // Balanced model
+    }
+  }
+}
+
+// Then use: Agent tool with subagent_type: "code-reviewer"
+```
+
+### 7. Implement Graceful Shutdown
+
+```typescript
+const controller = new AbortController();
+
+process.on('SIGINT', () => {
+  controller.abort();
+});
+
+const query = sdk.query({
+  prompt: "...",
+  options: { abortController: controller }
+});
+```
+
+### 8. Use Directory Restrictions
+
+```typescript
+options: {
+  additionalDirectories: [
+    '/safe/work/dir',
+    '/allowed/read/dir'
+  ],
+  permissionMode: 'default'  // Will still ask for outside these
+}
+```
+
+### 9. Filter Background Shell Output
+
+```typescript
+// Start a noisy process
+await tool('Bash', {
+  command: 'npm run build',
+  run_in_background: true
+});
+
+// Only get errors
+const errors = await tool('BashOutput', {
+  bash_id: shellId,
+  filter: 'ERROR|error|Error|failed'  // Regex filter
+});
+```
+
+### 10. Transform Tool Inputs with Hooks
+
+```typescript
+const sanitizeHook: HookCallback = async (input) => {
+  if (input.hook_event_name === 'PreToolUse' && input.tool_name === 'Bash') {
+    // Sanitize dangerous commands
+    const sanitized = input.tool_input.command
+      .replace(/rm\s+-rf/g, 'echo BLOCKED: rm -rf')
+      .replace(/sudo/g, 'echo BLOCKED: sudo');
+
+    return {
+      continue: true,
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        updatedInput: { ...input.tool_input, command: sanitized }
+      }
+    };
+  }
+  return { continue: true };
+};
+```
+
+---
+
+## Implementation Patterns Discovered
+
+### 1. Parent Tool Use Tracking
+
+The SDK uses `parent_tool_use_id` to create a tree structure:
+
+```
+User Message (null parent)
+  └─ Assistant Message
+       └─ Tool Use A
+            └─ User Message (results, parent: A)
+                 └─ Assistant Message
+                      ├─ Tool Use B (parent: A)
+                      └─ Tool Use C (parent: A)
+```
+
+**Pattern:** Track this tree to understand:
+- Which tool results triggered which tool uses
+- Parallel vs sequential tool execution
+- Tool dependency chains
+
+### 2. Synthetic Message Injection
+
+The SDK can inject "user" messages that aren't from the user:
+
+```typescript
+isSynthetic: true  // System-generated, not user-authored
+```
+
+**Pattern:** Used for:
+- Tool results formatted as user messages
+- System prompts injected mid-conversation
+- Automatic context injection
+
+### 3. Permission Update Suggestions
+
+The SDK provides pre-computed permission updates:
+
+```typescript
+options.suggestions: PermissionUpdate[]
+```
+
+**Pattern:** Don't recompute these! The SDK has:
+- Parsed bash commands to extract file paths
+- Analyzed tool inputs for directory access
+- Computed minimal permission grants
+
+### 4. Async Hook Pattern
+
+Hooks can defer execution:
+
+```typescript
+return { async: true, asyncTimeout: 30000 };
+```
+
+**Pattern:** For:
+- Long-running external validations
+- Webhook notifications
+- Database lookups
+
+### 5. Hook Matcher Pattern (Undocumented)
+
+```typescript
+hooks: {
+  PreToolUse: [
+    { matcher: "Bash", hooks: [bashHook] },
+    { matcher: "File*", hooks: [fileHook] },  // Glob?
+    { hooks: [allToolsHook] }  // No matcher = all
+  ]
+}
+```
+
+**Pattern:** Likely supports:
+- Exact tool name matching
+- Glob patterns
+- No matcher = match all
+
+### 6. Session ID Persistence
+
+```typescript
+uuid: UUID  // Crypto UUID v4
+session_id: string  // Session identifier
+```
+
+**Pattern:** Every message has both:
+- `uuid` - Unique message ID
+- `session_id` - Groups messages into sessions
+
+Track `session_id` to:
+- Resume conversations
+- Analyze session metrics
+- Fork sessions
+
+---
+
+## Security Considerations
+
+### 1. Permission Escalation Risk
+
+```typescript
+// DANGEROUS: Can escalate to bypass all permissions
+await query.setPermissionMode('bypassPermissions');
+```
+
+**Mitigation:** Never expose this to untrusted input.
+
+### 2. Bash Command Injection
+
+```typescript
+// User input flows to bash
+const userInput = getUserInput();
+await tool('Bash', { command: `echo ${userInput}` });
+```
+
+**Mitigation:** Use PreToolUse hook to validate/sanitize.
+
+### 3. File System Access
+
+```typescript
+additionalDirectories: ['/']  // DANGEROUS: Full filesystem
+```
+
+**Mitigation:** Restrict to minimal necessary directories.
+
+### 4. MCP Server Trust
+
+```typescript
+mcpServers: {
+  "untrusted": {
+    type: 'http',
+    url: 'https://malicious.com/mcp'  // DANGEROUS
+  }
+}
+```
+
+**Mitigation:** Only use trusted MCP servers. Validate SSL/TLS.
+
+### 5. Hook Code Execution
+
+```typescript
+// Hooks run arbitrary code
+hooks: {
+  PreToolUse: [{ hooks: [evilHook] }]
+}
+```
+
+**Mitigation:** Only use trusted hook code. Hooks have full access to tool inputs/outputs.
+
+---
+
+## Known Limitations
+
+### 1. Tool Timeout Limit
+- Maximum bash timeout: 10 minutes (600,000ms)
+- No way to extend beyond this
+
+### 2. No Built-in Retry Logic
+- Tool failures don't auto-retry
+- Must implement retry logic in hooks or application code
+
+### 3. Limited File Read
+- Manual pagination required for large files
+- No streaming file reads
+
+### 4. MCP Server Lifecycle
+- No documented way to restart failed MCP servers
+- Must restart entire session
+
+### 5. Hook Matcher Documentation
+- Matcher syntax completely undocumented
+- Trial and error required
+
+### 6. EXIT_REASONS Not Typed
+- Runtime array, not const-typed
+- Unknown what values are possible
+
+### 7. Permission Rule Patterns
+- Pattern syntax undocumented
+- Unclear if globs, regex, or custom format
+
+### 8. Agent Subagent Types
+- No documented list of valid `subagent_type` values
+- Must discover through experimentation
+
+---
+
+## Version-Specific Notes
+
+**Version 0.1.22 Notes:**
+
+1. **Renamed from Claude Code SDK**
+   - Migration guide: https://docs.claude.com/en/docs/claude-code/sdk/migration-guide
+   - Old entrypoint deprecated (going away October 21)
+
+2. **System Prompt Breaking Change**
+   - `customSystemPrompt` and `appendSystemPrompt` removed from main options
+   - Replaced with single `systemPrompt` field
+
+3. **Prepare Script**
+   - Package has anti-publish protection
+   - Must use `publish-agent-sdk.sh` script
+   - Prevents accidental publishes
+
+---
+
+## Future Research Directions
+
+1. **Hook Matcher Syntax** - Need to discover valid patterns through testing
+2. **EXIT_REASONS Values** - Runtime extraction needed
+3. **Subagent Types** - Document all valid agent types
+4. **Permission Rule Patterns** - Define exact pattern syntax
+5. **MCP SDK Transport** - Deep dive on in-process MCP servers
+6. **Compact Boundary Logic** - When/why does auto-compact trigger?
+7. **Extra Args** - What args are valid? What do they do?
+8. **Permission Prompt Tool** - What are valid `permissionPromptToolName` values?
+
+---
+
+## Appendix: Quick Reference
+
+### Main Entry Point
+```typescript
+import { query } from '@anthropic-ai/claude-agent-sdk';
+
+const result = query({
+  prompt: "string" | AsyncIterable<SDKUserMessage>,
+  options?: Options
+});
+```
+
+### Exported Types
+```typescript
+export type {
+  // Core
+  Options, Query, SDKMessage,
+
+  // Messages
+  SDKUserMessage, SDKAssistantMessage, SDKSystemMessage,
+  SDKResultMessage, SDKPartialAssistantMessage,
+
+  // Permissions
+  PermissionMode, PermissionUpdate, PermissionResult,
+  CanUseTool,
+
+  // Hooks
+  HookEvent, HookCallback, HookInput, HookJSONOutput,
+
+  // MCP
+  McpServerConfig, McpServerStatus,
+
+  // Misc
+  ModelUsage, AccountInfo, SlashCommand, ModelInfo
+};
+```
+
+### Exported Functions
+```typescript
+export {
+  query,                  // Main entry point
+  tool,                   // Create MCP tool
+  createSdkMcpServer,     // Create in-process MCP server
+  AbortError,             // Error class
+  HOOK_EVENTS,            // Hook event names
+  EXIT_REASONS            // Exit reason values (runtime)
+};
+```
+
+### Tool Names Reference
+- `Agent` - Create subagent
+- `Bash` - Execute shell command
+- `BashOutput` - Get background shell output
+- `ExitPlanMode` - Submit plan for approval
+- `FileEdit` - Edit file content
+- `FileRead` - Read file
+- `FileWrite` - Write file
+- `Glob` - Find files by pattern
+- `Grep` - Search file contents
+- `KillShell` - Kill background shell
+- `ListMcpResources` - List MCP resources
+- `NotebookEdit` - Edit Jupyter notebook
+- `ReadMcpResource` - Read MCP resource
+- `TodoWrite` - Update todo list
+- `WebFetch` - Fetch and process web content
+- `WebSearch` - Search the web
+- Plus any custom MCP tools
+
+---
+
+**SDK Version:** 0.1.22
+**Documentation Date:** October 18, 2025
