@@ -1,7 +1,6 @@
 # TodoWrite Storage Mechanism - Under the Hood
 
 **Discovery Date:** 2025-10-18
-**Source:** `/Users/guybary/Documents/open-docs/node_modules/@anthropic-ai/claude-agent-sdk/cli.js:907`
 
 ---
 

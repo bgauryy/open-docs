@@ -2,8 +2,6 @@
 
 **Document Purpose**: Describes the internal implementation and usage of each tool in the Claude Agent SDK based on actual code analysis from `@anthropic-ai/claude-agent-sdk@0.1.22`
 
-**Source**: `/Users/guybary/Documents/open-docs/node_modules/@anthropic-ai/claude-agent-sdk/sdk.mjs`
-
 ---
 
 ## Core Tool System Architecture

@@ -1192,19 +1192,6 @@ The Claude Agent SDK is a **well-architected process-based system** that provide
 
 ---
 
-## References
-
-**Source Files Analyzed:**
-- `/Users/guybary/Documents/open-docs/node_modules/@anthropic-ai/claude-agent-sdk/sdk.mjs` (14,855 lines)
-- `/Users/guybary/Documents/open-docs/node_modules/@anthropic-ai/claude-agent-sdk/sdk.d.ts` (24 lines)
-- `/Users/guybary/Documents/open-docs/node_modules/@anthropic-ai/claude-agent-sdk/sdkTypes.d.ts` (446 lines)
-- `/Users/guybary/Documents/open-docs/node_modules/@anthropic-ai/claude-agent-sdk/sdk-tools.d.ts` (272 lines)
-- `/Users/guybary/Documents/open-docs/node_modules/@anthropic-ai/claude-agent-sdk/cli.js` (9.7MB minified)
-- `/Users/guybary/Documents/open-docs/node_modules/@anthropic-ai/claude-agent-sdk/package.json`
-
-**Reference Documentation:**
-- `/Users/guybary/Documents/open-docs/research/AI/@anthropic-ai/claude-agent-sdk/claude-agent-sdk-tools-complete.md`
-
 **Official Documentation:**
 - https://docs.claude.com/en/api/agent-sdk/overview
 - https://github.com/anthropics/claude-agent-sdk-typescript
