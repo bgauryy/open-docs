@@ -1,472 +1,179 @@
-# Claude Agent SDK - Documentation
+# Claude Agent SDK - Documentation Hub
 
-> Comprehensive documentation for the Claude Agent SDK (@anthropic-ai/claude-agent-sdk)
+> Your guide to building AI agents with Claude
 
-## What is the Claude Agent SDK?
+## What is This?
 
-The Claude Agent SDK is a TypeScript library that enables you to build AI agents powered by Claude. It provides:
+The Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`) is a TypeScript library that lets you build AI agents powered by Claude. This documentation hub helps you understand how it works, what it can do, and how to use it effectively.
 
-- **Built-in Tools**: 17 tools for file operations, command execution, web search, and more
-- **Custom Tools**: Add your own tools via the Model Context Protocol (MCP)
-- **Agent System**: Create specialized sub-agents for complex tasks
-- **Security Hooks**: Intercept and control every tool execution
-- **Flexible Permissions**: From fully automatic to manual approval
-- **Session Management**: Persistent conversations with branching and resuming
-
----
-
-## Quick Start
-
-```bash
-npm install @anthropic-ai/claude-agent-sdk
-```
-
-```typescript
-import { query } from '@anthropic-ai/claude-agent-sdk';
-
-const result = await query({
-    prompt: "Analyze this codebase and suggest improvements",
-    apiKey: process.env.ANTHROPIC_API_KEY,
-    workingDirectory: process.cwd()
-});
-
-console.log(result.messages);
-```
+**What makes it special?**
+- 17 built-in tools for file operations, commands, web search, and more
+- Add your own tools via Model Context Protocol (MCP)
+- Specialized sub-agents for complex workflows
+- Security hooks to control every action
+- Flexible permissions from manual to fully automatic
 
 ---
 
-## Documentation Index
+## 📚 Documentation Guide
 
-| Guide | What You'll Learn |
-|-------|-------------------|
-| **[Comprehensive Guide](./claude-agent-sdk-comprehensive-guide.md)** | Complete overview of all features, patterns, and examples |
-| **[Type System](./claude-agent-sdk-types-complete.md)** | All TypeScript types, interfaces, and schemas |
+### Start Here
+
+| Document | When to Read It |
+|----------|----------------|
+| **[Comprehensive Guide](./claude-agent-sdk-comprehensive-guide.md)** | Your first stop - overview of everything the SDK can do |
+| **[Type System](./claude-agent-sdk-types-complete.md)** | When you need TypeScript types and interfaces |
+| **[Implementation & Gotchas](./claude-agent-sdk-implementation-gotchas.md)** | Before building anything serious - learn the pitfalls |
+
+### Core Features
+
+| Document | What You'll Find |
+|----------|-----------------|
 | **[Tool System](./claude-agent-sdk-tools-complete.md)** | Complete reference for all 17 built-in tools |
-| **[Hooks & Permissions](./claude-agent-sdk-hooks-permissions-complete.md)** | Security, control, and permission management |
-| **[Agent System](./claude-agent-sdk-agents-complete.md)** | Creating and managing specialized sub-agents |
-| **[Implementation & Gotchas](./claude-agent-sdk-implementation-gotchas.md)** | Advanced features and best practices |
-| **[System Prompts](./claude-agent-sdk-prompts-complete.md)** | Internal prompts and agent behavior |
-| **[Undocumented Features](./claude-agent-sdk-undocumented.md)** | Hidden features and internal APIs |
-| **[Design & Architecture](./claude-agent-sdk-design.md)** | Architecture overview and patterns |
-| **[Architecture](./architecture.md)** | CLI architecture and implementation details |
-| **[Internal Flows](./internal_flows.md)** | Tool internal implementation and execution flows |
-| **[CLI Analysis](./CLI-ANALYSIS.md)** | Deep dive into the CLI implementation |
+| **[Hooks & Permissions](./claude-agent-sdk-hooks-permissions-complete.md)** | Security, control flow, and permission management |
+| **[Agent System](./claude-agent-sdk-agents-complete.md)** | Creating specialized sub-agents for complex tasks |
+
+### Deep Dives
+
+| Document | What You'll Find |
+|----------|-----------------|
+| **[System Prompts](./claude-agent-sdk-prompts-complete.md)** | Internal prompts that guide agent behavior |
+| **[Undocumented Features](./claude-agent-sdk-undocumented.md)** | Hidden features and internal APIs not in official docs |
+| **[Design & Architecture](./claude-agent-sdk-design.md)** | Architecture patterns and design decisions |
+
+### Claude Code Implementation
+
+**Looking for Claude Code user documentation?** See the [Claude Code Documentation Hub](../claude-code/README.md)
+
+| Document | What You'll Find |
+|----------|-----------------|
+| **[CLI Architecture](./architecture.md)** | Complete CLI commands, modules, and systems reference |
+| **[CLI Analysis](./claude-code-cli_analysis.md)** | How the SDK and CLI work together |
+| **[SDK Implementation Analysis](./claude-code-sdk-implementaion-analysis.md)** | Process architecture and communication patterns |
+| **[Skills System](./claude-code-skills-documentaion.md)** | Claude Code's skill definition and execution |
+| **[Internal Flows](./claude-code-internal-flows.md)** | How tools work internally |
+| **[TodoWrite Flow](./claude-code-TodoWrite-flow.md)** | Task management storage mechanism |
 
 ---
 
-## Quick Reference
+## 🎯 Quick Navigation
 
-### Core API
+**I want to...**
 
-```typescript
-import { query } from '@anthropic-ai/claude-agent-sdk';
-
-// Basic query
-const result = await query({
-    prompt: "Your prompt here",
-    apiKey: process.env.ANTHROPIC_API_KEY
-});
-
-// Streaming query with runtime control
-for await (const message of query({
-    prompt: "Your prompt",
-    stream: true
-})) {
-    if (message.type === 'assistant') {
-        console.log(message.text);
-    }
-
-    // Runtime control (ONLY works with streaming!)
-    message.setPermissionMode('acceptEdits');
-    message.setModel('opus');
-    message.setMaxThinkingTokens(10000);
-    message.interrupt();
-}
-```
-
-### 17 Built-in Tools
-
-| Category | Tools |
-|----------|-------|
-| **File Operations** | FileRead, FileWrite, FileEdit, NotebookEdit |
-| **File Discovery** | Glob, Grep |
-| **Command Execution** | Bash, BashOutput, KillShell |
-| **Web & Search** | WebFetch, WebSearch |
-| **MCP Integration** | McpInput, ListMcpResources, ReadMcpResource |
-| **Task Management** | TodoWrite |
-| **Agent Control** | Agent, ExitPlanMode |
-
-### 9 Hook Events
-
-1. **PreToolUse** - Intercept before tool execution (can modify input or deny)
-2. **PostToolUse** - Process after tool execution (can add context)
-3. **Notification** - Handle agent notifications
-4. **UserPromptSubmit** - Intercept user prompts (can inject context)
-5. **SessionStart** - Session initialization (startup/resume/clear/compact)
-6. **SessionEnd** - Session termination (with exit reason)
-7. **Stop** - Agent stop events
-8. **SubagentStop** - Subagent completion events
-9. **PreCompact** - Before conversation compaction (manual/auto)
-
-### 4 Permission Modes
-
-| Mode | Behavior | Use Case |
-|------|----------|----------|
-| **`default`** | Prompt user for permissions | Standard interactive mode |
-| **`acceptEdits`** | Auto-approve file edits only | Review mode |
-| **`bypassPermissions`** | Skip all permission checks | Automation/CI |
-| **`plan`** | Planning mode, no execution | Task planning |
+- **Get started quickly** → [Comprehensive Guide](./claude-agent-sdk-comprehensive-guide.md)
+- **Understand the 17 tools** → [Tool System](./claude-agent-sdk-tools-complete.md)
+- **Build secure agents** → [Hooks & Permissions](./claude-agent-sdk-hooks-permissions-complete.md)
+- **Create sub-agents** → [Agent System](./claude-agent-sdk-agents-complete.md)
+- **Avoid common mistakes** → [Implementation & Gotchas](./claude-agent-sdk-implementation-gotchas.md)
+- **Add custom tools** → [Comprehensive Guide - MCP Section](./claude-agent-sdk-comprehensive-guide.md)
+- **Understand internals** → [System Prompts](./claude-agent-sdk-prompts-complete.md) + [Undocumented Features](./claude-agent-sdk-undocumented.md)
+- **Study Claude Code** → [CLI Architecture](./architecture.md) + [CLI Analysis](./claude-code-cli_analysis.md)
 
 ---
 
-## Advanced Features
-
-### Runtime Control
-
-Control the agent dynamically during execution (requires streaming mode):
-```typescript
-for await (const msg of query({ stream: true })) {
-    msg.interrupt();                    // Stop execution
-    msg.setPermissionMode('acceptEdits'); // Change permissions
-    msg.setModel('opus');                // Switch models
-    msg.setMaxThinkingTokens(10000);    // Adjust thinking budget
-}
-```
-
-### Account Information
-
-Get account details and usage information:
-
-```typescript
-const info = await message.getAccountInfo();
-// Returns: { email, usage, limits, ... }
-```
-
-### MCP Server Status
-
-Monitor the status of connected MCP servers:
-
-```typescript
-const status = await message.getMcpServersStatus();
-// Returns: Map<serverName, { connected, tools, resources }>
-```
-
-### Session Management
-
-**Fork conversations** to create branches:
-```typescript
-await query({
-    sessionId: existingSession,
-    fork: true
-});
-```
-
-**Resume from a specific message**:
-```typescript
-await query({
-    sessionId: existingSession,
-    resumeFromMessageId: messageId
-});
-```
-
-### Hook Timeout Configuration
-
-Adjust the timeout for hook callbacks:
-
-```typescript
-await query({
-    hookCallbackTimeoutMs: 10000  // Default is 5000ms
-});
-```
-
----
-
-## Agent System
-
-Create specialized sub-agents for complex tasks:
-
-```typescript
-// Define specialized subagent
-const agentDefinition: AgentDefinition = {
-    description: "Specialized code review agent",
-    tools: ["FileRead", "Grep", "Glob"],  // Whitelist approach
-    model: "opus",  // haiku | sonnet | opus | inherit
-    prompt: "You are a code review specialist..."
-};
-
-// Delegate via Agent tool
-{
-    tool: "Agent",
-    input: {
-        subagent_type: "code-review",
-        prompt: "Review this PR"
-    }
-}
-```
-
-**Tool Restriction**: Whitelist only - when `tools` array is specified, agent can **ONLY** use those tools.
-
-**Model Selection**:
-- `haiku` - Fast, economical (~$0.25/M input tokens)
-- `sonnet` - Balanced, recommended default (~$3/M input tokens)
-- `opus` - Highest capability (~$15/M input tokens)
-- `inherit` - Use parent agent's model
-
----
-
-## Getting Started
+## 🚀 Getting Started
 
 ### Installation
-
 ```bash
 npm install @anthropic-ai/claude-agent-sdk
 ```
 
-### Basic Usage
-
-```typescript
-import { query } from '@anthropic-ai/claude-agent-sdk';
-
-const result = await query({
-    prompt: "Analyze this codebase",
-    apiKey: process.env.ANTHROPIC_API_KEY,
-    workingDirectory: process.cwd()
-});
-
-console.log(result.messages);
-```
-
-### With Hooks (Security Example)
-
-```typescript
-import { query } from '@anthropic-ai/claude-agent-sdk';
-
-await query({
-    prompt: "Your task",
-    hooks: [
-        {
-            callback: async (hookInput) => {
-                // Block dangerous commands
-                if (hookInput.hook_event_name === 'PreToolUse') {
-                    if (hookInput.tool_name === 'Bash' &&
-                        hookInput.input.command.includes('rm -rf')) {
-                        return {
-                            deny: true,
-                            message: "Blocked: dangerous command",
-                            interrupt: true
-                        };
-                    }
-                }
-                return { allow: true };
-            }
-        }
-    ]
-});
-```
-
-### With Custom Tools (MCP)
-
-```typescript
-import { query, tool, createSdkMcpServer } from '@anthropic-ai/claude-agent-sdk';
-
-// Define custom tool
-const weatherTool = tool(
-    'get_weather',
-    'Get current weather for a location',
-    {
-        type: 'object',
-        properties: {
-            location: { type: 'string', description: 'City name' }
-        },
-        required: ['location']
-    },
-    async ({ location }) => {
-        // Your implementation
-        return { temp: 72, condition: 'sunny' };
-    }
-);
-
-// Create in-process MCP server
-const server = createSdkMcpServer({
-    name: 'weather-server',
-    version: '1.0.0',
-    tools: [weatherTool]
-});
-
-// Use in query
-await query({
-    prompt: "What's the weather in SF?",
-    mcpServers: {
-        weather: { type: 'sdk', server }
-    }
-});
-```
+### First Query
+See [Comprehensive Guide](./claude-agent-sdk-comprehensive-guide.md) for detailed examples.
 
 ---
 
-## Common Pitfalls
+## 🔑 Key Concepts
 
-### 1. Control Methods Require Streaming
+### The Tool System
+17 built-in tools organized into categories:
+- **File Operations**: Read, write, edit files and notebooks
+- **Discovery**: Search files by name or content
+- **Execution**: Run commands and scripts
+- **Web**: Fetch pages and search
+- **MCP**: Integrate custom tools
+- **Management**: Task tracking and agent delegation
 
-**Issue**: `interrupt()`, `setPermissionMode()`, etc. only work with `stream: true`
+→ See [Tool System](./claude-agent-sdk-tools-complete.md) for complete reference
 
-```typescript
-// ✅ WORKS
-for await (const msg of query({ stream: true })) {
-    msg.setPermissionMode('acceptEdits');
-}
+### Security & Control
+Control agent behavior through:
+- **9 Hook Events**: Intercept and modify every action
+- **4 Permission Modes**: From manual approval to full automation
+- **Runtime Control**: Change behavior mid-execution
+- **Tool Whitelisting**: Restrict agent capabilities
 
-// ❌ FAILS - Methods not available
-const result = await query({ prompt: "..." });
-result.interrupt(); // ERROR!
-```
+→ See [Hooks & Permissions](./claude-agent-sdk-hooks-permissions-complete.md)
 
-### 2. Bash 10-Minute Hard Timeout
+### Agent Architecture
+Build complex workflows with:
+- **Sub-agents**: Specialized agents for specific tasks
+- **Model Selection**: Choose haiku/sonnet/opus per agent
+- **Tool Restrictions**: Whitelist allowed tools per agent
+- **Custom Prompts**: Define agent behavior and expertise
 
-**Issue**: All Bash commands have a hard 10-minute limit
-
-**Solution**: Use background execution for long tasks
-```typescript
-// Background execution
-{ tool: "Bash", input: { command: "npm test", run_in_background: true } }
-
-// Poll output later
-{ tool: "BashOutput", input: { bash_id: "shell_id" } }
-
-// Kill if needed
-{ tool: "KillShell", input: { shell_id: "shell_id" } }
-```
-
-### 3. Permission Escalation Risk
-
-**Issue**: Can programmatically bypass ALL permissions
-
-```typescript
-// This bypasses all permission checks!
-message.setPermissionMode('bypassPermissions');
-```
-
-**Mitigation**: Use PreToolUse hook to prevent mode changes
-```typescript
-if (hookInput.tool_name === 'setPermissionMode') {
-    return { deny: true, message: "Permission mode locked" };
-}
-```
-
-### 4. Tool Whitelist Not Blacklist
-
-**Issue**: Agent tool restrictions use whitelist approach
-
-```typescript
-// ✅ Agent can ONLY use FileRead and Grep
-{ tools: ["FileRead", "Grep"] }
-
-// ❌ No way to say "everything except X"
-// Must list all allowed tools explicitly
-```
-
-### 5. Hook Matcher Syntax Undocumented
-
-**Issue**: `HookCallbackMatcher.matcher` pattern syntax is completely undocumented
-
-**Workaround**: Use callback logic instead
-```typescript
-// Don't rely on matcher
-hooks: [{
-    matcher: "???",  // Syntax unknown
-    callback: async (input) => {
-        // Use logic in callback instead
-        if (input.tool_name === 'Bash') { ... }
-    }
-}]
-```
-
-### 6. Compact Boundary Messages
-
-**Issue**: SDK auto-summarizes long conversations, inserting `compact_boundary` messages
-
-**Impact**: Message indices shift; use `message_id` for stable references
-
-```typescript
-// ❌ Unstable - indices change after compaction
-const msg = messages[5];
-
-// ✅ Stable - message_id persists
-const msg = messages.find(m => m.message_id === targetId);
-```
-
-### 7. Parent Tool Use Tracking
-
-**Note**: Tool uses create a tree structure via `parent_tool_use_id`
-
-**Impact**: Essential for understanding execution flow and dependencies
-
-```typescript
-// Each tool use has:
-{
-    tool_use_id: "unique_id",
-    parent_tool_use_id: "parent_id" | null,  // Creates tree
-    tool_name: "Bash",
-    input: { ... }
-}
-```
-
-### 8. Synthetic User Messages
-
-**Note**: System can inject messages with `type: 'user'` that weren't from actual user
-
-**Detection**: Check for synthetic flag or hook context
-
-### 9. FileEdit Requires Unique Strings
-
-**Issue**: FileEdit old_string must be unique in file or edit fails
-
-**Solutions**:
-1. Provide larger context to make unique
-2. Use `replace_all: true` for global replace
-3. Use FileWrite to overwrite entire file
-
-### 10. Grep Default Mode Returns Filenames Only
-
-**Issue**: Default `output_mode` is `files_with_matches` (just paths)
-
-```typescript
-// ❌ Returns only filenames
-{ tool: "Grep", input: { pattern: "TODO" } }
-
-// ✅ Returns matching lines
-{
-    tool: "Grep",
-    input: {
-        pattern: "TODO",
-        output_mode: "content",  // Must specify!
-        "-n": true  // Show line numbers
-    }
-}
-```
+→ See [Agent System](./claude-agent-sdk-agents-complete.md)
 
 ---
 
-## Learning Paths
+## ⚠️ Important Things to Know
 
-**Getting Started**:
-1. Read the [Comprehensive Guide](./claude-agent-sdk-comprehensive-guide.md) for an overview
-2. Explore the [Tool System](./claude-agent-sdk-tools-complete.md) to understand available tools
-3. Review [Implementation & Gotchas](./claude-agent-sdk-implementation-gotchas.md) for best practices
+Before building with the SDK, read [Implementation & Gotchas](./claude-agent-sdk-implementation-gotchas.md) to learn about:
 
-**Building Secure Agents**:
-1. Start with [Hooks & Permissions](./claude-agent-sdk-hooks-permissions-complete.md)
-2. Learn about [Tool Restrictions](./claude-agent-sdk-agents-complete.md)
-3. Review security patterns in [Implementation & Gotchas](./claude-agent-sdk-implementation-gotchas.md)
+1. **Runtime control only works with streaming** - `interrupt()`, `setPermissionMode()`, etc.
+2. **Bash has 10-minute hard timeout** - Use background execution for long tasks
+3. **Permission escalation is possible** - Can bypass all security programmatically
+4. **Tool restrictions are whitelist-only** - Can't say "everything except X"
+5. **Hook matcher syntax is undocumented** - Use callback logic instead
+6. **Conversation auto-compaction** - Message indices can shift
+7. **FileEdit requires unique strings** - Must be unambiguous in file
+8. **Grep returns filenames by default** - Must specify `output_mode: "content"`
 
-**Understanding Internals**:
-1. Read about [System Prompts](./claude-agent-sdk-prompts-complete.md) and agent behavior
-2. Explore the [Agent System](./claude-agent-sdk-agents-complete.md) architecture
-3. Dive into [CLI Analysis](./CLI-ANALYSIS.md) for implementation details
+→ See [Implementation & Gotchas](./claude-agent-sdk-implementation-gotchas.md) for details
 
 ---
 
-## Official Resources
+## 🎓 Learning Paths
+
+### Path 1: Building Your First Agent
+1. [Comprehensive Guide](./claude-agent-sdk-comprehensive-guide.md) - Get the overview
+2. [Tool System](./claude-agent-sdk-tools-complete.md) - Learn what tools do
+3. [Implementation & Gotchas](./claude-agent-sdk-implementation-gotchas.md) - Avoid mistakes
+
+### Path 2: Building Secure Agents
+1. [Hooks & Permissions](./claude-agent-sdk-hooks-permissions-complete.md) - Understand security
+2. [Agent System](./claude-agent-sdk-agents-complete.md) - Learn tool restrictions
+3. [Implementation & Gotchas](./claude-agent-sdk-implementation-gotchas.md) - Security patterns
+
+### Path 3: Understanding the Internals
+1. [System Prompts](./claude-agent-sdk-prompts-complete.md) - How agents are guided
+2. [Undocumented Features](./claude-agent-sdk-undocumented.md) - Hidden capabilities
+3. [Design & Architecture](./claude-agent-sdk-design.md) - Architecture patterns
+4. [CLI Analysis](./claude-code-cli_analysis.md) - How Claude Code uses the SDK
+
+### Path 4: Studying Claude Code
+1. [CLI Architecture](./architecture.md) - Complete CLI reference
+2. [CLI Analysis](./claude-code-cli_analysis.md) - SDK-CLI relationship
+3. [Skills System](./claude-code-skills-documentaion.md) - How skills work
+4. [Internal Flows](./claude-code-internal-flows.md) - Tool implementations
+5. [TodoWrite Flow](./claude-code-TodoWrite-flow.md) - Task management
+
+---
+
+## 📖 Documentation Structure
+
+Each document in this collection serves a specific purpose:
+
+- **Guides** teach you how to use features
+- **References** document APIs and types
+- **Analyses** explain implementation details
+- **Architecture** describes system design
+
+All technical details, code examples, and API documentation live in the individual documents - this README is your map to find what you need.
+
+---
+
+## 🔗 Official Resources
 
 - **GitHub**: https://github.com/anthropics/claude-agent-sdk-typescript
 - **Official Docs**: https://docs.claude.com/en/api/agent-sdk/overview
@@ -474,7 +181,6 @@ const msg = messages.find(m => m.message_id === targetId);
 
 ---
 
-## License
+## 📝 About This Documentation
 
-- **SDK**: Copyright © Anthropic PBC, MIT License
-- **Documentation**: For educational and reference purposes
+This documentation complements the official docs by providing deeper technical details, implementation analysis, and comprehensive references.

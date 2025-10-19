@@ -1,16 +1,10 @@
 # Claude Agent SDK - Implementation Analysis
 
-**Analysis Date:** 2025-10-18
-**SDK Version:** 0.1.22
-**Package:** @anthropic-ai/claude-agent-sdk
-
----
-
 ## Executive Summary
 
 The Claude Agent SDK is a **process-based architecture** that wraps a native CLI binary. The SDK doesn't implement tools directly - instead, it spawns the CLI as a child process and communicates via JSON streams over stdio. This design allows for:
 
-1. **Language Agnostic CLI**: The core implementation is in the CLI binary (9.7MB minified)
+1. **Language Agnostic CLI**: The core implementation is in the CLI binary (9.3MB minified)
 2. **TypeScript SDK Wrapper**: Provides type-safe interface and handles process management
 3. **Stream-Based Communication**: JSON messages over stdin/stdout
 4. **Session Management**: File-based session storage and resumption
@@ -45,7 +39,7 @@ The Claude Agent SDK is a **process-based architecture** that wraps a native CLI
 ┌─────────────────────────────────────────────────────────────┐
 │                  CLI Binary (cli.js)                         │
 │                                                              │
-│  • 9.7MB minified JavaScript bundle                         │
+│  • 9.3MB minified JavaScript bundle                         │
 │  • All 17 built-in tools implemented here                   │
 │  • System prompt management                                 │
 │  • Permission system                                        │
@@ -1071,8 +1065,8 @@ export CLAUDE_AGENT_SDK_VERSION=0.1.22
 
 ```
 @anthropic-ai/claude-agent-sdk/
-├── cli.js           (9.7MB) - Main CLI binary
-├── sdk.mjs          (535KB) - SDK implementation
+├── cli.js           (9.3MB) - Main CLI binary
+├── sdk.mjs          (522KB) - SDK implementation
 ├── sdk.d.ts         (1.8KB) - Main types
 ├── sdkTypes.d.ts    (15KB) - Detailed types
 ├── sdk-tools.d.ts   (7.3KB) - Tool types

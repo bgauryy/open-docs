@@ -1,13 +1,5 @@
 # Claude Code CLI - Analysis from Actual Code
 
-**File**: `/node_modules/@anthropic-ai/claude-agent-sdk/cli.js`
-**Size**: 9.3MB (minified/bundled)
-**Lines**: 3,732 lines
-**Version**: 2.0.22
-**Shebang**: `#!/usr/bin/env node`
-
----
-
 ## Architecture Discovery
 
 ### The SDK is a CLI Wrapper!
@@ -523,7 +515,3 @@ const fs = {
    - Lines of code modified
    - Pull requests and commits
    - Active time tracking
-
----
-
-*Analysis completed from actual minified CLI source code (cli.js, 9.3MB, 3,732 lines)*

@@ -1,10 +1,5 @@
 # Comparison: Documentation vs NPX Installation
 
-**Date:** 2025-10-17
-**Claude Code Version:** /@2.0.21
-
----
-
 ## Overview
 
 This document compares the tool information from:

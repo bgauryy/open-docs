@@ -1,11 +1,5 @@
 # Claude Code NPX Installation - Tools Deep Dive
 
-**Version:** `/@2.0.21`
-
-**Date Extracted:** 2025-10-17
-
----
-
 ## Installation Structure
 
 ```

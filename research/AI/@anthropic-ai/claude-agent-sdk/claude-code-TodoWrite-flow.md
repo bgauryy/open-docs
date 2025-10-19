@@ -1,9 +1,5 @@
 # TodoWrite Storage Mechanism - Under the Hood
 
-**Discovery Date:** 2025-10-18
-
----
-
 ## 🎯 TL;DR - How Tasks Are Stored
 
 **Tasks are stored IN-MEMORY ONLY** in the CLI process, organized by agent ID.
@@ -462,7 +458,3 @@ If Anthropic wanted to add todo persistence, they could:
    ```
 
 But currently, **none of this exists**. Todos are purely in-memory.
-
----
-
-*Analysis completed through code inspection and pattern matching in cli.js:907*
