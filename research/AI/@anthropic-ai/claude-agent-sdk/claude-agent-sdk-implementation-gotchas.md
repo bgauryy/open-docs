@@ -966,6 +966,24 @@ export interface ExitPlanModeInput {
 
 **Use Case:** Get agent to plan before executing. Review and approve the plan before allowing execution.
 
+### TodoWrite Tool
+
+```typescript
+export interface TodoWriteInput {
+  todos: {
+    content: string;
+    status: "pending" | "in_progress" | "completed";
+    activeForm: string;  // UNDOCUMENTED: Purpose unclear
+  }[];
+}
+```
+
+**Purpose:** Update the todo list during agent execution.
+
+**Gotcha:** The `activeForm` field is required but not documented. Its purpose is unclear from the type definition alone.
+
+**Use Case:** Track agent progress, manage multi-step tasks, and provide status updates.
+
 ---
 
 ## Message Types & Flow
