@@ -1,11 +1,5 @@
 # Claude Code: Gotchas, Hidden Issues, and Expert Tips
 
-**Version:** 2.0.21
-**Analysis Date:** 2025-10-17
-**Status:** Technical Deep Dive
-
----
-
 ## Table of Contents
 
 1. [Critical Issues & Gotchas](#critical-issues--gotchas)

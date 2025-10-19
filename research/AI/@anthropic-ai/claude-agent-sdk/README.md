@@ -48,9 +48,10 @@ console.log(result.messages);
 | **[System Prompts](./claude-agent-sdk-prompts-complete.md)** | Internal prompts and agent behavior |
 | **[Undocumented Features](./claude-agent-sdk-undocumented.md)** | Hidden features and internal APIs |
 | **[Design & Architecture](./claude-agent-sdk-design.md)** | Architecture overview and patterns |
-| **[Architecture](./architecture.md)** | CLI architecture and implementation details |
+| **[CLI Architecture](./architecture.md)** | Complete CLI commands, modules, and systems reference |
+| **[CLI Analysis](./cli_analysis.md)** | SDK-CLI relationship and implementation discovery |
+| **[Skills System](./CLAUDE-CODE-SKILLS-COMPREHENSIVE-DOCUMENTATION.md)** | Claude Code Skills: definition, loading, and execution |
 | **[Internal Flows](./internal_flows.md)** | Tool internal implementation and execution flows |
-| **[CLI Analysis](./CLI-ANALYSIS.md)** | Deep dive into the CLI implementation |
 
 ---
 
@@ -462,7 +463,8 @@ const msg = messages.find(m => m.message_id === targetId);
 **Understanding Internals**:
 1. Read about [System Prompts](./claude-agent-sdk-prompts-complete.md) and agent behavior
 2. Explore the [Agent System](./claude-agent-sdk-agents-complete.md) architecture
-3. Dive into [CLI Analysis](./CLI-ANALYSIS.md) for implementation details
+3. Dive into [CLI Analysis](./cli_analysis.md) for SDK-CLI implementation details
+4. Review [Skills System](./CLAUDE-CODE-SKILLS-COMPREHENSIVE-DOCUMENTATION.md) for Claude Code skills
 
 ---
 

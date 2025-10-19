@@ -10,6 +10,5 @@ This folder contains focused documentation about different aspects of Claude Cod
 - **`claude-code-internal-tools-deep-dive.md`**: Detailed look at internal/built‑in tools — capabilities, invocation flow, constraints, and how tools interact with the runtime.
 - **`claude-code-npx-tools-extraction.md`**: Process and guidance for extracting/using NPX tools — discovery, wrapping, non‑interactive flags, and usage examples.
 - **`claude-code-undocumented-features-and-prompts.md`**: Catalog of verified undocumented behaviors, features, prompts, and patterns — practical tips and gotchas (all features verified in source code).
-- **`claude-code-verification-report.md`**: Documentation verification report — systematic verification of 45 claims using SDK type definitions, with 95.6% accuracy (43/44 verified), corrections needed, and new features discovered.
 
 If you add new docs, please keep filenames in lowercase kebab‑case and add a short one‑line description here.

@@ -1,14 +1,5 @@
 # Claude Agent SDK CLI - Complete Architecture Documentation
 
-**Version**: 2.0.22
-**File**: `node_modules/@anthropic-ai/claude-agent-sdk/cli.js`
-**Size**: 6,048,012 characters (~1.5M tokens), 3,733 lines
-**Type**: Minified/Bundled ES Module Executable
-**Copyright**: © Anthropic PBC. All rights reserved.
-**Documentation Generated**: 2025-10-18
-
----
-
 ## Table of Contents
 
 1. [Executive Summary](#executive-summary)
@@ -2909,9 +2900,3 @@ Copyright © Anthropic PBC. All rights reserved.
 Use is subject to the Legal Agreements outlined here:
 https://docs.claude.com/en/docs/claude-code/legal-and-compliance
 ```
-
----
-
-**Generated**: 2025-10-18
-**Research Method**: Binary analysis via MCP tools
-**Analyst**: Claude (Anthropic AI)

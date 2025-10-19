@@ -1,11 +1,5 @@
 # Claude Agent SDK - Implementation Analysis
 
-**Analysis Date:** 2025-10-18
-**SDK Version:** 0.1.22
-**Package:** @anthropic-ai/claude-agent-sdk
-
----
-
 ## Executive Summary
 
 The Claude Agent SDK is a **process-based architecture** that wraps a native CLI binary. The SDK doesn't implement tools directly - instead, it spawns the CLI as a child process and communicates via JSON streams over stdio. This design allows for:
