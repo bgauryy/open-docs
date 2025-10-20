@@ -10,6 +10,13 @@ A curated collection of resource docs covering undocumented features, explanatio
 - [Claude Code](research/AI/@anthropic-ai/claude-code/README.md) - Complete claude-code documentation
 - [Claude Agent SDK](research/AI/@anthropic-ai/claude-agent-sdk/README.md) - Complete claude-agent-sdk documentation
 
+## Recommendation
+
+You can use Octocode MCP (smart AI research MCP) for smart research on this repository!
+
+**Octocode MCP:** [github.com/bgauryy/octocode-mcp](https://github.com/bgauryy/octocode-mcp)  
+**Example:** [youtube.com/watch?v=S2pcEjHo6CM](https://www.youtube.com/watch?v=S2pcEjHo6CM)
+
 ### Request a doc
 
 If you have a request for documentation, please open an issue with your request: [github.com/bgauryy/open-docs/issues](https://github.com/bgauryy/open-docs/issues)
