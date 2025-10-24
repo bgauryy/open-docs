@@ -1,6 +1,6 @@
 # Gemini CLI - IDE Integration Reference
 
-**Generated:** 2025-10-24  
+**Generated:** 2024-10-24
 **Purpose:** Complete documentation of IDE integration, protocol, and code assist features
 
 **STATUS:** ⚠️ **PREVIEW** - VSCode extension is in preview

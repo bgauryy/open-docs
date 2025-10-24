@@ -1,7 +1,7 @@
 # Gemini CLI - Architecture Overview
 
-**Generated:** 2025-10-24  
-**Purpose:** Deep reverse engineering audit for developers, researchers, super users, and security auditors
+**Generated:** 2024-10-24
+**Purpose:** Comprehensive technical documentation of system architecture and core components
 
 ---
 

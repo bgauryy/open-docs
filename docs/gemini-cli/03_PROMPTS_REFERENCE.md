@@ -1,6 +1,6 @@
 # Gemini CLI - Prompts Reference
 
-**Generated:** 2025-10-24  
+**Generated:** 2024-10-24
 **Purpose:** Complete documentation of all system prompts, templates, and instruction builders
 
 ---
@@ -647,19 +647,25 @@ Tool names are injected into templates:
 ### Template String Interpolation
 
 ```typescript
-function templateString(template: string, inputs: Record<string, unknown>): string {
-  return template.replace(/\{\{(\w+)\}\}/g, (_, key) => {
-    return String(inputs[key] ?? '');
-  });
+function templateString(template: string, inputs: AgentInputs): string {
+  const placeholderRegex = /\$\{(\w+)\}/g;  // Uses ${name} syntax, NOT {{name}}
+
+  // Validates all required keys exist
+  // Throws Error if any placeholder key is not found in inputs
+
+  return template.replace(placeholderRegex, (_match, key) =>
+    String(inputs[key])  // No default value - errors if missing
+  );
 }
 
 // Example
-const template = "Hello {{name}}, your task is {{task}}";
+const template = "Hello ${name}, your task is ${task}";
 const result = templateString(template, { name: "User", task: "refactor" });
 // "Hello User, your task is refactor"
 ```
 
 **Use Case:** Agent prompts with dynamic inputs
+**Important:** Template validation throws detailed errors for missing keys
 
 ---
 

@@ -1,6 +1,6 @@
 # Gemini CLI - A2A (Agent-to-Agent) Server Reference
 
-**Generated:** 2025-10-24  
+**Generated:** 2024-10-24
 **Purpose:** Complete documentation of the A2A server architecture, agent system, and routing
 
 **STATUS:** ⚠️ **EXPERIMENTAL** - All code in this package is under active development
@@ -176,10 +176,14 @@ export class Task {
 ### Task States
 
 ```typescript
+// TaskState is imported from '@a2a-js/sdk'
 enum TaskState {
-  RUNNING = 'running',
-  COMPLETED = 'completed',
-  ERROR = 'error',
+  SUBMITTED = 'submitted',       // Task created, not yet executing
+  WORKING = 'working',           // Task actively executing
+  INPUT_REQUIRED = 'input-required',  // Waiting for user input
+  COMPLETED = 'completed',       // Task finished successfully
+  FAILED = 'failed',             // Task encountered error
+  CANCELED = 'canceled',         // Task was canceled
 }
 ```
 
@@ -213,12 +217,14 @@ Complete (Save state, persist to storage)
 **Event Types:**
 
 ```typescript
-enum CoderAgentEvent {
-  STATE_CHANGE = 'state_change',
-  TOOL_CALL_UPDATE = 'tool_call_update',
-  TEXT_CONTENT = 'text_content',
-  THOUGHT = 'thought',
-  THOUGHT_SUMMARY = 'thought_summary',
+export enum CoderAgentEvent {
+  ToolCallConfirmationEvent = 'tool-call-confirmation',
+  ToolCallUpdateEvent = 'tool-call-update',
+  TextContentEvent = 'text-content',
+  StateChangeEvent = 'state-change',
+  StateAgentSettingsEvent = 'agent-settings',
+  ThoughtEvent = 'thought',
+  // Note: ThoughtSummary is a type, not an event
 }
 ```
 
@@ -1029,5 +1035,5 @@ app.get('/health', (req, res) => {
 
 ---
 
-This comprehensive reference documents the A2A server architecture, APIs, and deployment patterns, based on code analysis of the experimental A2A server package.
+This comprehensive reference documents the A2A server architecture, APIs, and deployment patterns for the experimental A2A server package.
 

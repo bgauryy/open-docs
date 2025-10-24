@@ -1,6 +1,6 @@
 # Gemini CLI - Configuration Reference
 
-**Generated:** 2025-10-24  
+**Generated:** 2024-10-24
 **Purpose:** Complete documentation of all configuration schemas, settings, and environment variables
 
 ---
@@ -1636,5 +1636,5 @@ These settings exist but are not documented in official docs:
 
 ---
 
-This comprehensive configuration reference documents every setting, environment variable, and keyboard shortcut in Gemini CLI, including hidden and undocumented options discovered through code analysis.
+This comprehensive configuration reference documents every setting, environment variable, and keyboard shortcut in Gemini CLI, including hidden and undocumented options.
 

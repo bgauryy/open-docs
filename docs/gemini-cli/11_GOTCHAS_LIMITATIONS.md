@@ -1,6 +1,6 @@
 # Gemini CLI - Gotchas & Limitations Reference
 
-**Generated:** 2025-10-24  
+**Generated:** 2024-10-24
 **Purpose:** Comprehensive documentation of known issues, limitations, and workarounds
 
 ---
@@ -666,5 +666,5 @@ mcpServers:
 - ⚠️ **Known Limitation:** 5+ issues
 - 🚧 **TODO:** 3 issues (diff race, etc.)
 
-This comprehensive gotchas reference documents all known issues, limitations, and workarounds discovered through deep code analysis of Gemini CLI.
+This comprehensive gotchas reference documents all known issues, limitations, and workarounds in Gemini CLI.
 

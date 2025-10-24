@@ -1,6 +1,6 @@
 # Gemini CLI - Security & Permissions Reference
 
-**Generated:** 2025-10-24  
+**Generated:** 2024-10-24
 **Purpose:** Complete documentation of security mechanisms, permissions, trust models, and sandbox execution
 
 ---
@@ -39,7 +39,7 @@ Gemini CLI implements a **multi-layered security model** with several independen
 │          LAYER 2: Tool Confirmation                        │
 │  - Auto-accept safe operations                             │
 │  - User confirmation for write operations                  │
-│  - Approval modes (ALWAYS / AUTO_EDIT / CONFIRM)          │
+│  - Approval modes (YOLO / AUTO_EDIT / DEFAULT)            │
 └─────────────────────────┬─────────────────────────────────┘
                           ↓
 ┌───────────────────────────────────────────────────────────┐
@@ -563,9 +563,9 @@ Defined in `packages/core/src/tools/tool-invocations.ts`:
 
 ```typescript
 enum ApprovalMode {
-  CONFIRM = 'CONFIRM',         // Ask for every operation
-  AUTO_EDIT = 'AUTO_EDIT',     // Auto-approve file edits
-  ALWAYS = 'ALWAYS',           // Auto-approve everything (YOLO)
+  DEFAULT = 'default',         // Ask for every operation (default mode)
+  AUTO_EDIT = 'autoEdit',      // Auto-approve file edits only
+  YOLO = 'yolo',               // Auto-approve everything (dangerous!)
 }
 ```
 
@@ -626,7 +626,7 @@ Tool Call Request
 Check Approval Mode
     ↓
 ┌─────────────────────────────────┐
-│ Mode = ALWAYS?                  │ → Yes → Auto-approve
+│ Mode = YOLO?                    │ → Yes → Auto-approve
 └─────────────────────────────────┘
     ↓ No
 ┌─────────────────────────────────┐
@@ -1065,9 +1065,9 @@ mcpServers:
 
 | Mode | Description | Use Case |
 |------|-------------|----------|
-| `CONFIRM` | Confirm every operation | Default, safest |
-| `AUTO_EDIT` | Auto-approve file edits | Trusted file operations |
-| `ALWAYS` | Auto-approve everything | YOLO mode (dangerous) |
+| `DEFAULT` (`default`) | Confirm every operation | Default, safest |
+| `AUTO_EDIT` (`autoEdit`) | Auto-approve file edits | Trusted file operations |
+| `YOLO` (`yolo`) | Auto-approve everything | Dangerous! |
 
 ---
 
@@ -1077,7 +1077,7 @@ mcpServers:
 
 ```yaml
 tools:
-  autoAccept: true        # Enables ALWAYS mode
+  autoAccept: true        # Enables YOLO mode
 ```
 
 ---
@@ -1085,7 +1085,7 @@ tools:
 #### Via CLI Flag
 
 ```bash
-gemini --auto-accept      # Enables ALWAYS mode
+gemini --auto-accept      # Enables YOLO mode
 ```
 
 ---
@@ -1094,7 +1094,7 @@ gemini --auto-accept      # Enables ALWAYS mode
 
 User selects "Always Approve" in confirmation dialog:
 - Sets mode to `AUTO_EDIT` (for file edits only)
-- Does NOT set mode to `ALWAYS` (still requires confirmation for shell commands)
+- Does NOT set mode to `YOLO` (still requires confirmation for shell commands)
 
 ---
 
@@ -1225,5 +1225,5 @@ User selects "Always Approve" in confirmation dialog:
 
 ---
 
-This comprehensive security reference documents all permission models, trust mechanisms, sandbox execution, and security boundaries in Gemini CLI, including gotchas and best practices discovered through code analysis.
+This comprehensive security reference documents all permission models, trust mechanisms, sandbox execution, and security boundaries in Gemini CLI, including gotchas and best practices.
 

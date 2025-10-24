@@ -1,6 +1,6 @@
 # Gemini CLI - Testing Patterns & Edge Cases Reference
 
-**Generated:** 2025-10-24  
+**Generated:** 2024-10-24
 **Purpose:** Documentation of test patterns, integration tests, and edge case handling
 
 ---
@@ -672,5 +672,5 @@ it('should skip disabled extensions', ...);
 
 ---
 
-This comprehensive testing reference documents test patterns, integration tests, edge cases, and mock strategies discovered through analysis of the Gemini CLI test suite.
+This comprehensive testing reference documents test patterns, integration tests, edge cases, and mock strategies used in the Gemini CLI test suite.
 

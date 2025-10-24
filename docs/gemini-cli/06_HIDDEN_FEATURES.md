@@ -1,8 +1,7 @@
 # Gemini CLI - Undocumented Features Reference
 
-**Generated:** 2025-10-24
-**Updated:** 2025-10-24 (Verified against official documentation)
-**Purpose:** Documentation of ONLY truly undocumented features, experimental flags, TODOs, and deprecated functionality
+**Generated:** 2024-10-24
+**Purpose:** Documentation of undocumented features, experimental flags, TODOs, and deprecated functionality
 
 **Note:** This document has been cleaned to include ONLY features that are NOT documented in official Gemini CLI documentation. Many features previously listed have been removed as they are officially documented in `docs/get-started/configuration.md` and other official docs.
 
@@ -157,7 +156,7 @@ experimental:
 **Setting:** `experimental.codebaseInvestigatorSettings.model`
 
 **Type:** `string`
-**Default:** `DEFAULT_GEMINI_MODEL` (`gemini-2.0-flash-exp`)
+**Default:** `DEFAULT_GEMINI_MODEL` (`gemini-2.5-pro`)
 **Show in Dialog:** No
 
 **Description:** The model to use for the Codebase Investigator agent
@@ -688,19 +687,7 @@ function getDefaultExcludes(config?: Config): string[] {
 
 ---
 
-## Officially Documented Features (Removed from This Document)
-
-The following features were previously listed here but are **officially documented** in Gemini CLI docs and have been removed:
-
-- `write_todos` tool → Documented in `docs/tools/todos.md`
-- `useWriteTodos` setting → Documented in `docs/get-started/configuration.md`
-- `smart_edit` tool → Documented via `useSmartEdit` setting
-- `useSmartEdit` setting → Documented in `docs/get-started/configuration.md`
-- `experimental.useModelRouter` → Documented in `docs/get-started/configuration.md`
-- `general.checkpointing.enabled` → Documented in `docs/get-started/configuration.md`
-- `tools.core` → Documented in `docs/get-started/configuration.md`
-- `advanced.autoConfigureMemory` → Documented in `docs/get-started/configuration.md`
-- `ide.hasSeenNudge` → Documented in `docs/get-started/configuration.md`
+## Officially Documented Features
 
 **For documented features, please refer to:**
 - Official Configuration Docs: `docs/get-started/configuration.md`
@@ -709,4 +696,4 @@ The following features were previously listed here but are **officially document
 
 ---
 
-**This document contains ONLY truly undocumented features verified through code analysis and cross-referenced against official Gemini CLI documentation (as of 2025-10-24).**
+**This document contains undocumented features not covered in official Gemini CLI documentation (as of October 2024).**

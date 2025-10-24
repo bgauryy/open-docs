@@ -1,6 +1,6 @@
 # Gemini CLI - Tools Reference
 
-**Generated:** 2025-10-24  
+**Generated:** 2024-10-24
 **Purpose:** Complete catalog of all built-in tools, their parameters, behaviors, and gotchas
 
 ---
@@ -229,10 +229,10 @@ types.ts
 
 ```typescript
 interface ReadFileToolParams {
-  file_path: string;              // Absolute file path
-  start_line?: number;            // Start line (1-indexed)
-  end_line?: number;              // End line (inclusive)
-  enable_line_numbers?: boolean;  // Show line numbers (default: true)
+  absolute_path: string;          // Absolute file path (REQUIRED)
+  offset?: number;                // Starting line number (0-indexed, optional)
+  limit?: number;                 // Number of lines to read (optional)
+  // Note: Line numbers are always enabled (handled internally)
 }
 ```
 
@@ -259,11 +259,11 @@ File: src/index.ts (150 lines)
 
 #### Gotchas
 
-- **MUST use absolute paths** - relative paths not supported
-- Line numbers are 1-indexed (not 0-indexed)
+- **MUST use `absolute_path` parameter** - relative paths not supported
+- `offset` is 0-indexed (first line is 0, not 1)
 - Binary files detected via heuristic (first 4096 bytes)
-- Very large files (>1MB) should use line ranges
-- No automatic truncation - returns full range
+- Very large files (>1MB) should use `offset` and `limit` for partial reads
+- No automatic truncation - returns full range if no limit specified
 
 ---
 
@@ -278,10 +278,16 @@ File: src/index.ts (150 lines)
 
 ```typescript
 interface ReadManyFilesParams {
-  file_paths: string[];           // Array of absolute paths
-  start_line?: number;            // Start line for ALL files
-  end_line?: number;              // End line for ALL files
-  enable_line_numbers?: boolean;  // Show line numbers (default: true)
+  paths: string[];                    // Array of file/directory paths (REQUIRED)
+  include?: string[];                 // Glob patterns to include (e.g., ["*.ts", "*.js"])
+  exclude?: string[];                 // Glob patterns to exclude (e.g., ["*.test.ts"])
+  recursive?: boolean;                // Recursively search directories (default: false)
+  useDefaultExcludes?: boolean;       // Use default exclusions (node_modules, etc.)
+  file_filtering_options?: {          // Advanced filtering options
+    respect_git_ignore?: boolean;     // Respect .gitignore (default: true)
+    respect_gemini_ignore?: boolean;  // Respect .geminiignore (default: true)
+  };
+  // Note: Line numbers always enabled, no per-file line ranges
 }
 ```
 
@@ -289,7 +295,8 @@ interface ReadManyFilesParams {
 
 - **Parallel Reading:** Reads files concurrently
 - **Individual Errors:** Failed files don't block others
-- **Same Range:** Line range applies to ALL files
+- **Directory Support:** Can accept directories with `recursive: true`
+- **Pattern Matching:** Uses `include`/`exclude` for glob-based filtering
 - **Format:** Separates files with headers
 
 #### Example Output
@@ -309,10 +316,12 @@ Read 3 file(s):
 
 #### Gotchas
 
-- Line range is **shared** across all files
-- No per-file line ranges supported
+- **Use `paths` parameter** (not `file_paths`)
+- No per-file line ranges supported (reads entire files)
 - Max files not enforced (use responsibly)
 - Failures are individual, not fatal
+- Directory paths require `recursive: true` to traverse
+- `file_filtering_options` applies to all paths
 
 ---
 
@@ -417,8 +426,9 @@ Created file: src/new-tool.ts (150 lines)
 
 ```typescript
 interface ShellCommandParams {
-  command: string;       // Command to execute
-  reasoning: string;     // Why this command is needed
+  command: string;        // Command to execute (REQUIRED)
+  description?: string;   // Description of what the command does (optional)
+  directory?: string;     // Working directory for command execution (optional)
 }
 ```
 
@@ -586,7 +596,7 @@ This is the main content extracted from the page...
 
 ```typescript
 interface SaveMemoryParams {
-  content: string;    // Memory content to save
+  fact: string;    // Memory fact to save (REQUIRED)
 }
 ```
 
@@ -601,7 +611,7 @@ interface SaveMemoryParams {
 
 ```typescript
 // Model calls
-save_memory({ content: "User prefers single quotes in TypeScript" });
+save_memory({ fact: "User prefers single quotes in TypeScript" });
 
 // Stored as
 [2025-10-24 10:30:00] User prefers single quotes in TypeScript

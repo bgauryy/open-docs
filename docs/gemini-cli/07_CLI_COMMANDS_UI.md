@@ -1,6 +1,6 @@
 # Gemini CLI - Commands & UI Reference
 
-**Generated:** 2025-10-24  
+**Generated:** 2024-10-24
 **Purpose:** Complete documentation of all slash commands, keyboard shortcuts, and UI components
 
 ---
@@ -1145,5 +1145,5 @@ ui:
 
 ---
 
-This comprehensive reference documents all slash commands, keyboard shortcuts, and UI components in Gemini CLI, including hidden commands discovered through code analysis.
+This comprehensive reference documents all slash commands, keyboard shortcuts, and UI components in Gemini CLI, including hidden commands.
 
