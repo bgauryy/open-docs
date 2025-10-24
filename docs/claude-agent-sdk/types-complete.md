@@ -17,6 +17,10 @@
 8. [Model & Usage Types](#model--usage-types)
 9. [Query Interface](#query-interface)
 10. [Error Types](#error-types)
+11. [Type Relationships & Dependencies](#type-relationships--dependencies)
+12. [Key Observations](#key-observations)
+13. [Usage Examples](#usage-examples)
+14. [Summary](#summary)
 
 ---
 
@@ -1158,6 +1162,30 @@ ToolInputSchemas (Union)
 ├── WebFetchInput
 └── WebSearchInput
 ```
+
+---
+
+## Key Observations
+
+### Type Safety Features
+1. All tool inputs are strongly typed via auto-generated interfaces
+2. Union types ensure exhaustive pattern matching
+3. Discriminated unions used for message types (via `type` and `subtype` fields)
+4. AsyncGenerator typing enables proper TypeScript support for streaming
+
+### SDK Design Patterns
+1. **Async Generator Pattern**: Main query returns AsyncGenerator for streaming
+2. **Discriminated Unions**: All message types use type/subtype discriminators
+3. **Hook System**: Functional callback pattern with type-safe inputs/outputs
+4. **Permission System**: Multi-level update mechanism with destination targeting
+5. **MCP Integration**: Multiple transport types unified through union types
+
+### Notable Type Features
+1. **Optional Chaining Safety**: Many fields optional to allow progressive disclosure
+2. **Synthetic Messages**: `isSynthetic` flag distinguishes system-generated messages
+3. **Replay Detection**: `isReplay` prevents duplicate message processing
+4. **Token Tracking**: Detailed usage breakdown including cache metrics
+5. **Tool Whitelisting**: String array for tool names (no blacklist support)
 
 ---
 

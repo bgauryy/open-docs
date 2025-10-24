@@ -1,104 +1,55 @@
 # open-docs
 
-> Creating comprehensive, high-quality documentation for complex technical projects that deserve better docs.
+> Deep-dive documentation for AI CLI tools — the stuff official docs don't cover.
 
-## What is this?
+**For developers, researchers, and power users** who need to understand how these tools actually work under the hood. We extract undocumented features, hidden APIs, architecture internals, gotchas, and real implementation patterns directly from source code.
 
-**open-docs** is a documentation initiative focused on producing thorough, well-structured technical documentation for open-source projects. Many powerful tools and frameworks have incomplete, scattered, or hard-to-navigate documentation. This project aims to fix that.
+**Why use these docs?** Official docs tell you *what* to do. We show you *how it works*, *what's not documented*, and *what breaks*.
 
-By combining automated research, code analysis, and systematic organization, we create comprehensive documentation that covers:
-
-- **Undocumented features** - Capabilities that exist in the code but aren't officially documented
-- **Architecture deep-dives** - Internal structure, design patterns, and implementation details
-- **Complete API references** - Every tool, function, and interface with practical examples
-- **Gotchas and edge cases** - Hidden issues, quirks, and important implementation notes
-- **Real-world usage** - Practical guides based on actual code patterns and best practices
-
-### Principles
-
-- **Open Source Only** - All documentation is derived exclusively from publicly available open-source repositories and community resources
-- **No Proprietary Content** - We never include private, confidential, or proprietary materials
-- **Automated + Human-Curated** - Leveraging AI-powered research with human oversight for quality and accuracy
-- **Community-Driven** - Built from and for the community
+*All content extracted from public open-source repositories — no proprietary info, no secrets, just better organized knowledge.*
 
 ## 📚 Available Documentation
 
-### [Claude Code](docs/claude-code/README.md)
-Complete documentation for the claude-code CLI tool, including all prompts, internal tools, architecture, and undocumented features.
+### 1. Claude Agent SDK
+**[→ Full Documentation](docs/claude-agent-sdk/README.md)**
 
-### [Claude Agent SDK](docs/claude-agent-sdk/README.md)
-Comprehensive guide to the claude-agent-sdk, covering agents, tools, hooks, permissions, types, and implementation patterns.
+TypeScript library by Anthropic for building AI agents powered by Claude. 17 built-in tools, MCP integration, security hooks, specialized sub-agents, and flexible permission modes.
 
-### [Codex CLI](docs/codex_cli/README.md)
-Full documentation of the codex_cli project, including prompt processing, LLM integration, tool system, security, and MCP integration.
+### 2. Gemini CLI
+**[→ Full Documentation](docs/gemini-cli/README.md)**
 
-## 🚀 Getting Started
+Google's terminal CLI for Gemini AI. 5-package system with 15+ tools, agent-to-agent communication, VS Code integration, and MCP support.
 
-Each documentation set includes:
-- A comprehensive README with navigation guide
-- Multiple focused documents covering specific aspects
-- Code examples and practical usage patterns
-- Architecture diagrams and implementation details
+### 3. Codex CLI
+**[→ Full Documentation](docs/codex_cli/README.md)**
 
-Start by browsing the README for any documentation set above, or use the search functionality to find specific topics.
-
-## 🔍 Recommended Tools
-
-For intelligent exploration of this repository, we recommend using **Octocode MCP** - a smart AI code and GitHub research MCP server that creates better context for you and your AI agents.
-
-### Why Octocode MCP?
-
-**Octocode MCP** enhances your development environment by providing AI agents with powerful code research capabilities:
-
-- **Smart Code Search** - Advanced pattern matching and semantic search across codebases
-- **Structure Analysis** - Understand directory layouts, dependencies, and file organization
-- **Content Exploration** - Efficient file reading with pagination and context extraction
-- **Intelligent Navigation** - Quick discovery of relevant documentation and implementations
-- **Cross-Reference Analysis** - Connect related concepts across multiple documentation sets (and actual repositories)
-
-### Perfect for This Repository
-
-When working with open-docs, Octocode MCP helps you:
-- Quickly find specific topics across Claude Code, Claude Agent SDK, and Codex CLI docs
-- Understand relationships between different projects and their implementations
-- Search for patterns, APIs, and features across all documentation
-- Navigate complex documentation structures efficiently
-- Build comprehensive context for AI-assisted development
-
-### Get Started
-
-- **Repository:** [github.com/bgauryy/octocode-mcp](https://github.com/bgauryy/octocode-mcp)  
-- **Demo:** [youtube.com/watch?v=S2pcEjHo6CM](https://www.youtube.com/watch?v=S2pcEjHo6CM)  
-- **Setup:** Follow the README for installation with Claude Desktop, Cursor, or other MCP-compatible tools
-
-## 💬 Request Documentation
-
-Have a technical project that needs better documentation? Or do you want to better understand something about an existing project or documentation? We're always looking for new projects or topics to document.
-
-**Open a request:** [github.com/bgauryy/open-docs/issues](https://github.com/bgauryy/open-docs/issues)
-
-Please include:
-- Project name and repository URL
-- Why you think it needs better documentation
-- Specific areas or features you'd like documented
-
-## ⭐ Support
-
-If you find this project useful, please consider:
-- Giving it a ⭐ star on GitHub
-- Sharing it with others who might benefit
-- Contributing improvements or suggestions
-- Requesting documentation for projects you care about
-
-## ⚖️ Disclaimer
-
-- This project is provided for **research and educational purposes only**
-- All content is derived from publicly available open-source resources
-- Do not use any information to cause harm, exploit systems, or violate laws or terms of service
-- Independently verify all statements and use your own judgment
-- You are responsible for how you use this material
-- This project provides **no warranty** and is used **at your own risk**
+OpenAI's Rust-based terminal coding agent. High-performance with advanced tools, security sandboxing, and comprehensive approval policies.
 
 ---
 
-*Built with AI-powered research and human curation to make technical documentation accessible to everyone.*
+**Getting Started:**
+- **Using these tools?** Click any documentation link above for installation, architecture, and advanced features
+- **Building with these tools?** Check the API references, hook systems, and integration patterns
+- **Just exploring?** Start with Claude Agent SDK — it's the most complete
+
+## 🔍 Recommended: Octocode MCP
+
+Smart AI code and GitHub research MCP server for exploring this repository. Provides advanced pattern matching, semantic search, and cross-reference analysis across all documentation.
+
+→ [github.com/bgauryy/octocode-mcp](https://github.com/bgauryy/octocode-mcp) | [Demo](https://www.youtube.com/watch?v=S2pcEjHo6CM)
+
+## 💬 Request Documentation
+
+Know an AI/CLI tool with incomplete docs, hidden features, or complex internals? [Open an issue](https://github.com/bgauryy/open-docs/issues) with the repo URL and what's missing.
+
+## ⭐ Support
+
+Star on GitHub • Share with others • Request documentation for your projects • Sponsorships help maintain this project
+
+## ⚖️ Disclaimer
+
+Research and educational purposes only. Content derived from public open-source resources. Verify all information independently. No warranty provided. Use at your own risk.
+
+---
+
+**Enterprise Documentation:** Need enterprise-level documentation for your organization's codebase? Reach out: [bgauryy@octocodeai.com](mailto:bgauryy@octocodeai.com)

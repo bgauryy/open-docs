@@ -1,11 +1,9 @@
 # Claude Agent SDK - Comprehensive Guide
 
-**Package**: `@anthropic-ai/claude-agent-sdk`  
-**Version**: 0.1.22  
-**Repository**: https://github.com/anthropics/claude-agent-sdk-typescript  
+**Package**: `@anthropic-ai/claude-agent-sdk`
+**Version**: 0.1.22
+**Repository**: https://github.com/anthropics/claude-agent-sdk-typescript
 **Documentation**: https://docs.claude.com/en/api/agent-sdk/overview
-
-**✅ VALIDATED FROM ACTUAL SOURCE CODE** - All features verified from minified implementation
 
 ---
 

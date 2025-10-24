@@ -1727,5 +1727,4 @@ const asyncHook: HookCallback = async (input, toolUseID, { signal }) => {
 ---
 
 **Document Version:** 1.0
-**Last Updated:** 2025-10-18
 **SDK Version:** @anthropic-ai/claude-agent-sdk@1.x

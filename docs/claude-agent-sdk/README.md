@@ -21,25 +21,26 @@ The Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`) is a TypeScript library 
 
 | Document | When to Read It |
 |----------|----------------|
-| **[Comprehensive Guide](./claude-agent-sdk-comprehensive-guide.md)** | Your first stop - overview of everything the SDK can do |
-| **[Type System](./claude-agent-sdk-types-complete.md)** | When you need TypeScript types and interfaces |
-| **[Implementation & Gotchas](./claude-agent-sdk-implementation-gotchas.md)** | Before building anything serious - learn the pitfalls |
+| **[Comprehensive Guide](./comprehensive-guide.md)** | Your first stop - overview of everything the SDK can do |
+| **[Type System](./types-complete.md)** | When you need TypeScript types and interfaces |
+| **[Implementation & Gotchas](./implementation-gotchas.md)** | Before building anything serious - learn the pitfalls |
 
 ### Core Features
 
 | Document | What You'll Find |
 |----------|-----------------|
-| **[Tool System](./claude-agent-sdk-tools-complete.md)** | Complete reference for all 17 built-in tools |
-| **[Hooks & Permissions](./claude-agent-sdk-hooks-permissions-complete.md)** | Security, control flow, and permission management |
-| **[Agent System](./claude-agent-sdk-agents-complete.md)** | Creating specialized sub-agents for complex tasks |
+| **[Tool System](./tools-complete.md)** | Complete reference for all 17 built-in tools |
+| **[Hooks & Permissions](./hooks-permissions-complete.md)** | Security, control flow, and permission management |
+| **[Agent System](./agents-complete.md)** | Creating specialized sub-agents for complex tasks |
 
 ### Deep Dives
 
 | Document | What You'll Find |
 |----------|-----------------|
-| **[System Prompts](./claude-agent-sdk-prompts-complete.md)** | Internal prompts that guide agent behavior |
-| **[Undocumented Features](./claude-agent-sdk-undocumented.md)** | Hidden features and internal APIs not in official docs |
-| **[Design & Architecture](./claude-agent-sdk-design.md)** | Architecture patterns and design decisions |
+| **[System Prompts](./prompts-complete.md)** | Internal prompts that guide agent behavior |
+| **[Plugin System](./plugins.md)** | Complete guide to CLI plugin marketplace system |
+| **[Undocumented Features](./undocumented.md)** | Hidden features and internal APIs not in official docs |
+| **[Design & Architecture](./design.md)** | Architecture patterns and design decisions |
 
 ### Claude Code Implementation
 
@@ -48,11 +49,11 @@ The Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`) is a TypeScript library 
 | Document | What You'll Find |
 |----------|-----------------|
 | **[CLI Architecture](./architecture.md)** | Complete CLI commands, modules, and systems reference |
-| **[CLI Analysis](./claude-code-cli_analysis.md)** | How the SDK and CLI work together |
-| **[SDK Implementation Analysis](./claude-code-sdk-implementaion-analysis.md)** | Process architecture and communication patterns |
-| **[Skills System](./claude-code-skills-documentaion.md)** | Claude Code's skill definition and execution |
-| **[Internal Flows](./claude-code-internal-flows.md)** | How tools work internally |
-| **[TodoWrite Flow](./claude-code-TodoWrite-flow.md)** | Task management storage mechanism |
+| **[Plugin System](./plugins.md)** | Plugin & marketplace commands (`claude plugin`/`marketplace`) |
+| **[CLI Analysis](./cli_analysis.md)** | How the SDK and CLI work together |
+| **[SDK Implementation Analysis](./implementaion-analysis.md)** | Process architecture and communication patterns |
+| **[Skills System](./skills-documentaion.md)** | Claude Code's skill definition and execution |
+| **[Internal Flows](./internal-flows.md)** | How tools work internally |
 
 ---
 
@@ -60,14 +61,15 @@ The Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`) is a TypeScript library 
 
 **I want to...**
 
-- **Get started quickly** → [Comprehensive Guide](./claude-agent-sdk-comprehensive-guide.md)
-- **Understand the 17 tools** → [Tool System](./claude-agent-sdk-tools-complete.md)
-- **Build secure agents** → [Hooks & Permissions](./claude-agent-sdk-hooks-permissions-complete.md)
-- **Create sub-agents** → [Agent System](./claude-agent-sdk-agents-complete.md)
-- **Avoid common mistakes** → [Implementation & Gotchas](./claude-agent-sdk-implementation-gotchas.md)
-- **Add custom tools** → [Comprehensive Guide - MCP Section](./claude-agent-sdk-comprehensive-guide.md)
-- **Understand internals** → [System Prompts](./claude-agent-sdk-prompts-complete.md) + [Undocumented Features](./claude-agent-sdk-undocumented.md)
-- **Study Claude Code** → [CLI Architecture](./architecture.md) + [CLI Analysis](./claude-code-cli_analysis.md)
+- **Get started quickly** → [Comprehensive Guide](./comprehensive-guide.md)
+- **Understand the 17 tools** → [Tool System](./tools-complete.md)
+- **Build secure agents** → [Hooks & Permissions](./hooks-permissions-complete.md)
+- **Create sub-agents** → [Agent System](./agents-complete.md)
+- **Avoid common mistakes** → [Implementation & Gotchas](./implementation-gotchas.md)
+- **Add custom tools** → [Comprehensive Guide - MCP Section](./comprehensive-guide.md)
+- **Install CLI plugins** → [Plugin System](./plugins.md)
+- **Understand internals** → [System Prompts](./prompts-complete.md) + [Undocumented Features](./undocumented.md)
+- **Study Claude Code** → [CLI Architecture](./architecture.md) + [CLI Analysis](./cli_analysis.md)
 
 ---
 
@@ -79,7 +81,7 @@ npm install @anthropic-ai/claude-agent-sdk
 ```
 
 ### First Query
-See [Comprehensive Guide](./claude-agent-sdk-comprehensive-guide.md) for detailed examples.
+See [Comprehensive Guide](./comprehensive-guide.md) for detailed examples.
 
 ---
 
@@ -94,7 +96,7 @@ See [Comprehensive Guide](./claude-agent-sdk-comprehensive-guide.md) for detaile
 - **MCP**: Integrate custom tools
 - **Management**: Task tracking and agent delegation
 
-→ See [Tool System](./claude-agent-sdk-tools-complete.md) for complete reference
+→ See [Tool System](./tools-complete.md) for complete reference
 
 ### Security & Control
 Control agent behavior through:
@@ -103,7 +105,7 @@ Control agent behavior through:
 - **Runtime Control**: Change behavior mid-execution
 - **Tool Whitelisting**: Restrict agent capabilities
 
-→ See [Hooks & Permissions](./claude-agent-sdk-hooks-permissions-complete.md)
+→ See [Hooks & Permissions](./hooks-permissions-complete.md)
 
 ### Agent Architecture
 Build complex workflows with:
@@ -112,13 +114,13 @@ Build complex workflows with:
 - **Tool Restrictions**: Whitelist allowed tools per agent
 - **Custom Prompts**: Define agent behavior and expertise
 
-→ See [Agent System](./claude-agent-sdk-agents-complete.md)
+→ See [Agent System](./agents-complete.md)
 
 ---
 
 ## ⚠️ Important Things to Know
 
-Before building with the SDK, read [Implementation & Gotchas](./claude-agent-sdk-implementation-gotchas.md) to learn about:
+Before building with the SDK, read [Implementation & Gotchas](./implementation-gotchas.md) to learn about:
 
 1. **Runtime control only works with streaming** - `interrupt()`, `setPermissionMode()`, etc.
 2. **Bash has 10-minute hard timeout** - Use background execution for long tasks
@@ -129,34 +131,33 @@ Before building with the SDK, read [Implementation & Gotchas](./claude-agent-sdk
 7. **FileEdit requires unique strings** - Must be unambiguous in file
 8. **Grep returns filenames by default** - Must specify `output_mode: "content"`
 
-→ See [Implementation & Gotchas](./claude-agent-sdk-implementation-gotchas.md) for details
+→ See [Implementation & Gotchas](./implementation-gotchas.md) for details
 
 ---
 
 ## 🎓 Learning Paths
 
 ### Path 1: Building Your First Agent
-1. [Comprehensive Guide](./claude-agent-sdk-comprehensive-guide.md) - Get the overview
-2. [Tool System](./claude-agent-sdk-tools-complete.md) - Learn what tools do
-3. [Implementation & Gotchas](./claude-agent-sdk-implementation-gotchas.md) - Avoid mistakes
+1. [Comprehensive Guide](./comprehensive-guide.md) - Get the overview
+2. [Tool System](./tools-complete.md) - Learn what tools do
+3. [Implementation & Gotchas](./implementation-gotchas.md) - Avoid mistakes
 
 ### Path 2: Building Secure Agents
-1. [Hooks & Permissions](./claude-agent-sdk-hooks-permissions-complete.md) - Understand security
-2. [Agent System](./claude-agent-sdk-agents-complete.md) - Learn tool restrictions
-3. [Implementation & Gotchas](./claude-agent-sdk-implementation-gotchas.md) - Security patterns
+1. [Hooks & Permissions](./hooks-permissions-complete.md) - Understand security
+2. [Agent System](./agents-complete.md) - Learn tool restrictions
+3. [Implementation & Gotchas](./implementation-gotchas.md) - Security patterns
 
 ### Path 3: Understanding the Internals
-1. [System Prompts](./claude-agent-sdk-prompts-complete.md) - How agents are guided
-2. [Undocumented Features](./claude-agent-sdk-undocumented.md) - Hidden capabilities
-3. [Design & Architecture](./claude-agent-sdk-design.md) - Architecture patterns
-4. [CLI Analysis](./claude-code-cli_analysis.md) - How Claude Code uses the SDK
+1. [System Prompts](./prompts-complete.md) - How agents are guided
+2. [Undocumented Features](./undocumented.md) - Hidden capabilities
+3. [Design & Architecture](./design.md) - Architecture patterns
+4. [CLI Analysis](./cli_analysis.md) - How Claude Code uses the SDK
 
 ### Path 4: Studying Claude Code
 1. [CLI Architecture](./architecture.md) - Complete CLI reference
-2. [CLI Analysis](./claude-code-cli_analysis.md) - SDK-CLI relationship
-3. [Skills System](./claude-code-skills-documentaion.md) - How skills work
-4. [Internal Flows](./claude-code-internal-flows.md) - Tool implementations
-5. [TodoWrite Flow](./claude-code-TodoWrite-flow.md) - Task management
+2. [CLI Analysis](./cli_analysis.md) - SDK-CLI relationship
+3. [Skills System](./skills-documentaion.md) - How skills work
+4. [Internal Flows](./internal-flows.md) - Tool implementations
 
 ---
 
