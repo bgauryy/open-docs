@@ -207,7 +207,6 @@ Found an issue or want to improve the docs?
 | **Documentation Version** | 1.0.0 |
 | **Codex CLI Version** | Latest Development |
 | **Last Updated** | October 23, 2025 |
-| **Status** | ✅ Complete |
 | **Format** | GitHub-flavored Markdown |
 
 ---

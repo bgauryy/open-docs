@@ -2,7 +2,6 @@
 
 **Version**: 2.0.22  
 **Research Date**: October 18, 2025  
-**Status**: Discovered through MCP-based code analysis
 
 ---
 
