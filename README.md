@@ -1,33 +1,82 @@
 # open-docs
 
-A curated collection of resource docs covering undocumented features, explanations, and technical details of the Open project — based exclusively on publicly available open-source resources.
+> Creating comprehensive, high-quality documentation for complex technical projects that deserve better docs.
 
-- This project does not include proprietary or private materials.
-- This project's sources are community artifacts and open repositories.
+## What is this?
 
-## Documentation
+**open-docs** is a documentation initiative focused on producing thorough, well-structured technical documentation for open-source projects. Many powerful tools and frameworks have incomplete, scattered, or hard-to-navigate documentation. This project aims to fix that.
 
-- [Claude Code](research/AI/@anthropic-ai/claude-code/README.md) - Complete claude-code documentation
-- [Claude Agent SDK](research/AI/@anthropic-ai/claude-agent-sdk/README.md) - Complete claude-agent-sdk documentation
+By combining automated research, code analysis, and systematic organization, we create comprehensive documentation that covers:
 
-## Recommendation
+- **Undocumented features** - Capabilities that exist in the code but aren't officially documented
+- **Architecture deep-dives** - Internal structure, design patterns, and implementation details
+- **Complete API references** - Every tool, function, and interface with practical examples
+- **Gotchas and edge cases** - Hidden issues, quirks, and important implementation notes
+- **Real-world usage** - Practical guides based on actual code patterns and best practices
 
-You can use Octocode MCP (smart AI research MCP) for smart research on this repository!
+### Principles
 
-**Octocode MCP:** [github.com/bgauryy/octocode-mcp](https://github.com/bgauryy/octocode-mcp)  
-**Example:** [youtube.com/watch?v=S2pcEjHo6CM](https://www.youtube.com/watch?v=S2pcEjHo6CM)
+- **Open Source Only** - All documentation is derived exclusively from publicly available open-source repositories and community resources
+- **No Proprietary Content** - We never include private, confidential, or proprietary materials
+- **Automated + Human-Curated** - Leveraging AI-powered research with human oversight for quality and accuracy
+- **Community-Driven** - Built from and for the community
 
-### Request a doc
+## 📚 Available Documentation
 
-If you have a request for documentation, please open an issue with your request: [github.com/bgauryy/open-docs/issues](https://github.com/bgauryy/open-docs/issues)
+### [Claude Code](docs/claude-code/README.md)
+Complete documentation for the claude-code CLI tool, including all prompts, internal tools, architecture, and undocumented features.
 
-### Support
+### [Claude Agent SDK](docs/claude-agent-sdk/README.md)
+Comprehensive guide to the claude-agent-sdk, covering agents, tools, hooks, permissions, types, and implementation patterns.
 
-If you find this repo useful, please ⭐ it.
+### [Codex CLI](docs/codex_cli/README.md)
+Full documentation of the codex_cli project, including prompt processing, LLM integration, tool system, security, and MCP integration.
 
-### Disclaimer
+## 🚀 Getting Started
 
-- This project's research and data collection are mostly automated and provided for research and educational purposes only.
-- Do not use any information from this project to cause harm, exploit systems, or violate laws or terms of service.
-- Independently verify all statements and use your own judgment; you are responsible for how you use this material.
-- This project provides no warranty; use at your own risk.
+Each documentation set includes:
+- A comprehensive README with navigation guide
+- Multiple focused documents covering specific aspects
+- Code examples and practical usage patterns
+- Architecture diagrams and implementation details
+
+Start by browsing the README for any documentation set above, or use the search functionality to find specific topics.
+
+## 🔍 Recommended Tools
+
+For intelligent exploration of this repository, we recommend using **Octocode MCP** - a smart AI research MCP server:
+
+- **Repository:** [github.com/bgauryy/octocode-mcp](https://github.com/bgauryy/octocode-mcp)  
+- **Demo:** [youtube.com/watch?v=S2pcEjHo6CM](https://www.youtube.com/watch?v=S2pcEjHo6CM)
+
+## 💬 Request Documentation
+
+Have a technical project that needs better documentation? Or do you want to better understand something about an existing project or documentation? We're always looking for new projects or topics to document.
+
+**Open a request:** [github.com/bgauryy/open-docs/issues](https://github.com/bgauryy/open-docs/issues)
+
+Please include:
+- Project name and repository URL
+- Why you think it needs better documentation
+- Specific areas or features you'd like documented
+
+## ⭐ Support
+
+If you find this project useful, please consider:
+- Giving it a ⭐ star on GitHub
+- Sharing it with others who might benefit
+- Contributing improvements or suggestions
+- Requesting documentation for projects you care about
+
+## ⚖️ Disclaimer
+
+- This project is provided for **research and educational purposes only**
+- All content is derived from publicly available open-source resources
+- Do not use any information to cause harm, exploit systems, or violate laws or terms of service
+- Independently verify all statements and use your own judgment
+- You are responsible for how you use this material
+- This project provides **no warranty** and is used **at your own risk**
+
+---
+
+*Built with AI-powered research and human curation to make technical documentation accessible to everyone.*
