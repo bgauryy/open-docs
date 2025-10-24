@@ -8,6 +8,19 @@
 
 *All content extracted from public open-source repositories — no proprietary info, no secrets, just better organized knowledge.*
 
+## 💡 Motivation
+
+Open source doesn't automatically mean well-documented. While these projects are publicly available, critical details often remain buried in implementation code:
+
+- **Undocumented features** — Experimental APIs, beta functionality, and hidden capabilities not in official docs
+- **Implementation internals** — How things actually work vs. what the public API exposes
+- **System prompts** — The actual instructions sent to LLMs that shape agent behavior
+- **Real-world patterns** — Gotchas, edge cases, and integration nuances learned from source code
+
+This repository started when I tried to understand **how the Task tool works under the hood** across different CLI agents. That single question led to extracting architecture diagrams, security models, tool systems, and undocumented flows that weren't explained anywhere else.
+
+**For developers and agents:** Use this as a reference when building AI workflows, understanding tool implementations, or debugging complex behaviors. These docs bridge the gap between "read the source" and "trust the marketing page."
+
 ## 📚 Available Documentation
 
 ### 1. Claude Agent SDK
