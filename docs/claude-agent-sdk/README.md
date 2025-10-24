@@ -38,6 +38,7 @@ The Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`) is a TypeScript library 
 | Document | What You'll Find |
 |----------|-----------------|
 | **[System Prompts](./prompts-complete.md)** | Internal prompts that guide agent behavior |
+| **[Plugin System](./plugins.md)** | Complete guide to CLI plugin marketplace system |
 | **[Undocumented Features](./undocumented.md)** | Hidden features and internal APIs not in official docs |
 | **[Design & Architecture](./design.md)** | Architecture patterns and design decisions |
 
@@ -48,6 +49,7 @@ The Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`) is a TypeScript library 
 | Document | What You'll Find |
 |----------|-----------------|
 | **[CLI Architecture](./architecture.md)** | Complete CLI commands, modules, and systems reference |
+| **[Plugin System](./plugins.md)** | Plugin & marketplace commands (`claude plugin`/`marketplace`) |
 | **[CLI Analysis](./cli_analysis.md)** | How the SDK and CLI work together |
 | **[SDK Implementation Analysis](./implementaion-analysis.md)** | Process architecture and communication patterns |
 | **[Skills System](./skills-documentaion.md)** | Claude Code's skill definition and execution |
@@ -65,6 +67,7 @@ The Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`) is a TypeScript library 
 - **Create sub-agents** → [Agent System](./agents-complete.md)
 - **Avoid common mistakes** → [Implementation & Gotchas](./implementation-gotchas.md)
 - **Add custom tools** → [Comprehensive Guide - MCP Section](./comprehensive-guide.md)
+- **Install CLI plugins** → [Plugin System](./plugins.md)
 - **Understand internals** → [System Prompts](./prompts-complete.md) + [Undocumented Features](./undocumented.md)
 - **Study Claude Code** → [CLI Architecture](./architecture.md) + [CLI Analysis](./cli_analysis.md)
 
