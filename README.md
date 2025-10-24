@@ -44,10 +44,32 @@ Start by browsing the README for any documentation set above, or use the search 
 
 ## 🔍 Recommended Tools
 
-For intelligent exploration of this repository, we recommend using **Octocode MCP** - a smart AI research MCP server:
+For intelligent exploration of this repository, we recommend using **Octocode MCP** - a smart AI code and GitHub research MCP server that creates better context for you and your AI agents.
+
+### Why Octocode MCP?
+
+**Octocode MCP** enhances your development environment by providing AI agents with powerful code research capabilities:
+
+- **Smart Code Search** - Advanced pattern matching and semantic search across codebases
+- **Structure Analysis** - Understand directory layouts, dependencies, and file organization
+- **Content Exploration** - Efficient file reading with pagination and context extraction
+- **Intelligent Navigation** - Quick discovery of relevant documentation and implementations
+- **Cross-Reference Analysis** - Connect related concepts across multiple documentation sets (and actual repositories)
+
+### Perfect for This Repository
+
+When working with open-docs, Octocode MCP helps you:
+- Quickly find specific topics across Claude Code, Claude Agent SDK, and Codex CLI docs
+- Understand relationships between different projects and their implementations
+- Search for patterns, APIs, and features across all documentation
+- Navigate complex documentation structures efficiently
+- Build comprehensive context for AI-assisted development
+
+### Get Started
 
 - **Repository:** [github.com/bgauryy/octocode-mcp](https://github.com/bgauryy/octocode-mcp)  
-- **Demo:** [youtube.com/watch?v=S2pcEjHo6CM](https://www.youtube.com/watch?v=S2pcEjHo6CM)
+- **Demo:** [youtube.com/watch?v=S2pcEjHo6CM](https://www.youtube.com/watch?v=S2pcEjHo6CM)  
+- **Setup:** Follow the README for installation with Claude Desktop, Cursor, or other MCP-compatible tools
 
 ## 💬 Request Documentation
 
