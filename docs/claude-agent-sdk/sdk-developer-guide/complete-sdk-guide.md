@@ -1,8 +1,7 @@
 # Claude Agent SDK - Complete Developer Guide
 
 **SDK Version**: 0.1.22
-**Extraction Date**: 2025-10-24
-**Source**: Verified from SDK source code (`sdkTypes.d.ts`, `sdk.d.ts`, `sdk.mjs`)
+**Source**: SDK source code (`sdkTypes.d.ts`, `sdk.d.ts`, `sdk.mjs`)
 
 ---
 

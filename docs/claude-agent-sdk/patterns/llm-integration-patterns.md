@@ -1,7 +1,6 @@
 # Claude Agent SDK - LLM Integration Patterns & Internal Logic
 
 **SDK Version**: 0.1.22
-**Extraction Date**: 2025-10-24
 **Source**: SDK source code analysis, documented patterns
 
 ---

@@ -1,8 +1,7 @@
 # Claude Agent SDK - Complete Agent System Documentation
 
 **SDK Version**: 0.1.22
-**Last Updated**: 2025-10-24
-**Source**: `sdkTypes.d.ts`, `cli.js`, analyzed from SDK source
+**Source**: `sdkTypes.d.ts`, `cli.js`
 
 ---
 

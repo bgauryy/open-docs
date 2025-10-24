@@ -1,8 +1,7 @@
 # Claude Agent SDK - MCP Integration Complete Reference
 
 **SDK Version**: 0.1.22
-**Extraction Date**: 2025-10-24
-**Source**: `sdkTypes.d.ts`, verified from SDK source code
+**Source**: `sdkTypes.d.ts`
 
 ---
 

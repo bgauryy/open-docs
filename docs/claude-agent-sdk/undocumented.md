@@ -1,7 +1,6 @@
 # Claude Agent SDK - Undocumented & Internal Features
 
-**Version**: 2.0.22  
-**Research Date**: October 18, 2025  
+**Version**: 2.0.22
 
 ---
 
@@ -295,11 +294,6 @@ NODE_ENV=development  # May affect behavior
 # MCP-related (inferred)
 MCP_SERVER_<NAME>_URL  # MCP server URLs
 ```
-
-**Research Needed**: 
-- Comprehensive environment variable list
-- Debug/verbose modes
-- Development vs production behavior
 
 ---
 
@@ -653,10 +647,4 @@ While the SDK provides a comprehensive public API, many implementation details r
 - Request official documentation for gaps
 
 ---
-
-**Last Updated**: October 19, 2025  
-**Research Method**: MCP-based static analysis + type definition extraction  
-**Verification Status**: ✅ 95%+ accuracy verified against source code  
-**Completeness**: ~70% (limited by CLI minification)  
-**Next Steps**: Runtime analysis, de-minification, official source access
 

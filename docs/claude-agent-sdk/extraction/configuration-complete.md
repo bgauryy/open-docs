@@ -1,8 +1,7 @@
 # Claude Agent SDK - Configuration Complete Reference
 
 **SDK Version**: 0.1.22
-**Extraction Date**: 2025-10-24
-**Source**: `sdkTypes.d.ts`, analyzed from SDK source
+**Source**: `sdkTypes.d.ts`
 
 ---
 
@@ -848,8 +847,4 @@ claude-code --permission-mode plan
 - [ ] Commit project settings to git (if team)
 
 ---
-
-**Documentation Status**:  - Configuration system fully documented
-**Last Updated**: 2025-10-24
-**Next Steps**: MCP integration and architecture guides
 

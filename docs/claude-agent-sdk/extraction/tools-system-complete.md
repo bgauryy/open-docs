@@ -1,8 +1,7 @@
 # Claude Agent SDK - Complete Tool System Documentation
 
 **SDK Version**: 0.1.22
-**Last Updated**: 2025-10-24
-**Source**: `sdk-tools.d.ts`, verified from SDK source code
+**Source**: `sdk-tools.d.ts`
 
 ---
 

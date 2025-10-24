@@ -1,8 +1,7 @@
 # Claude Agent SDK - Skills System Complete Reference
 
 **SDK Version**: 0.1.22
-**Extraction Date**: 2025-10-24
-**Source**: Analyzed from SDK documentation and implementation patterns
+**Source**: SDK documentation and implementation patterns
 
 ---
 

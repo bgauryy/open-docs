@@ -1,7 +1,6 @@
 # Claude Agent SDK - Internal Constants & Implementations
 
 **SDK Version**: 0.1.22
-**Extraction Date**: 2025-10-24
 **Source**: `cli.js` (9.7MB bundled JavaScript)
 
 ---
@@ -552,8 +551,4 @@ function validateEditUniqueness(fileContent, oldString, replaceAll) {
 4. **Permission Validation**: Multi-level security checks
 
 ---
-
-**Extraction Status**:  - All constants verified from SDK v0.1.22
-**Last Updated**: 2025-10-24
-**Next Steps**: Create feature-specific implementation guides
 

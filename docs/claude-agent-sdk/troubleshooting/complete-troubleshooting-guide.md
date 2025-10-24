@@ -1,8 +1,7 @@
 # Claude Agent SDK - Complete Troubleshooting & Debugging Guide
 
 **SDK Version**: 0.1.22
-**Extraction Date**: 2025-10-24
-**Source**: Verified from SDK source code and implementation analysis
+**Source**: SDK source code and implementation analysis
 
 ---
 

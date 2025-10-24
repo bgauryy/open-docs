@@ -1,8 +1,7 @@
 # Claude Agent SDK - Architecture & Internals
 
 **SDK Version**: 0.1.22
-**Extraction Date**: 2025-10-24
-**Source**: Verified from SDK source code analysis
+**Source**: SDK source code analysis
 
 ---
 

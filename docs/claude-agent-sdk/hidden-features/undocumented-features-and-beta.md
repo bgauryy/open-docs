@@ -1,9 +1,7 @@
 # Claude Agent SDK - Undocumented Features, Beta Features & Hidden Capabilities
 
 **SDK Version**: 0.1.22
-**Extraction Date**: 2025-10-24
 **Source**: Extracted from SDK source code using MCP Local File Tools
-**Status**: ✅ Complete - All Features Verified from Source
 
 ---
 
@@ -812,10 +810,7 @@ import { /* internal exports */ } from '@anthropic-ai/claude-agent-sdk';
 
 ---
 
-**Undocumented Features Status**: ✅ Complete from Source  
-**Last Updated**: 2025-10-24  
-**SDK Version**: 0.1.22  
-**Verification**: 100% extracted from actual SDK code using MCP Local File Tools
+**SDK Version**: 0.1.22
 
 ---
 

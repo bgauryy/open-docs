@@ -1,13 +1,12 @@
 # Claude Agent SDK - Complete Extraction Documentation
 
 **SDK Version**: 0.1.22
-**Extraction Date**: 2025-10-24
 
 ---
 
 ## 📚 Overview
 
-This directory contains **comprehensive, verified extraction documentation** for the Claude Agent SDK and Claude Code CLI. All information has been extracted from source code, TypeScript definitions, and implementation analysis.
+This directory contains comprehensive extraction documentation for the Claude Agent SDK and Claude Code CLI. All information has been extracted from source code, TypeScript definitions, and implementation analysis.
 
 **Target Audiences**:
 - SDK developers building custom agents
@@ -316,18 +315,6 @@ This directory contains **comprehensive, verified extraction documentation** for
 - **Code Examples**: 50+ examples
 - **Real-World Patterns**: 20 patterns
 - **Gotchas Documented**: 43 critical issues
-- **Verification Status**: ✅ All verified against SDK 0.1.22
-
-### Quality Metrics
-
-| Metric | Status |
-|--------|--------|
-| **Accuracy** | ✅ ~95% (verified against source) |
-| **Completeness** | 🟡 70% (core features done) |
-| **Consistency** | 🟢 90% (good, needs review) |
-| **Examples** | 🟢 50+ examples |
-| **Gotchas** | ✅ 43 documented |
-| **Patterns** | 🟢 20 real-world patterns |
 
 ---
 
@@ -385,7 +372,5 @@ These documents are extraction-only (source code analysis). For user-facing docu
 
 ---
 
-**Last Updated**: 2025-10-24  
-**SDK Version**: 0.1.22  
-**Maintainer**: Documentation Team  
+**SDK Version**: 0.1.22
 
