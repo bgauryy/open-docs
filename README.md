@@ -40,11 +40,6 @@ OpenAI's Rust-based terminal coding agent. High-performance with advanced tools,
 
 ---
 
-**Getting Started:**
-- **Using these tools?** Click any documentation link above for installation, architecture, and advanced features
-- **Building with these tools?** Check the API references, hook systems, and integration patterns
-- **Just exploring?** Start with Claude Agent SDK — it's the most complete
-
 ## 🔍 Recommended: Octocode MCP
 
 Smart AI code and GitHub research MCP server for exploring this repository. Provides advanced pattern matching, semantic search, and cross-reference analysis across all documentation.
