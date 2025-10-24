@@ -1,7 +1,7 @@
-# Claude Agent SDK - Agents & Subagents Complete Reference
+# Claude Agent SDK - Complete Agent System Documentation
 
 **SDK Version**: 0.1.22
-**Extraction Date**: 2025-10-24
+**Last Updated**: 2025-10-24
 **Source**: `sdkTypes.d.ts`, `cli.js`, analyzed from SDK source
 
 ---
@@ -9,16 +9,19 @@
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [Agent Architecture](#agent-architecture)
-3. [Built-in Agents (All 5)](#built-in-agents-all-5)
-4. [Agent Definition Structure](#agent-definition-structure)
-5. [Context Management](#context-management)
-6. [Agent Color System](#agent-color-system)
-7. [Async Agent Execution](#async-agent-execution)
-8. [Custom Agent Creation](#custom-agent-creation)
-9. [Agent Performance & Token Optimization](#agent-performance--token-optimization)
-10. [Real-World Patterns](#real-world-patterns)
-11. [Gotchas & Best Practices](#gotchas--best-practices)
+2. [System Prompts](#system-prompts)
+3. [Agent Architecture](#agent-architecture)
+4. [Built-in Agents (All 5)](#built-in-agents-all-5)
+5. [Agent Definition Structure](#agent-definition-structure)
+6. [Configuring Agents](#configuring-agents)
+7. [Context Management](#context-management)
+8. [Agent Color System](#agent-color-system)
+9. [Async Agent Execution](#async-agent-execution)
+10. [Custom Agent Creation](#custom-agent-creation)
+11. [Agent Performance & Token Optimization](#agent-performance--token-optimization)
+12. [Real-World Patterns](#real-world-patterns)
+13. [Internal Implementation Details](#internal-implementation-details)
+14. [Gotchas & Best Practices](#gotchas--best-practices)
 
 ---
 
@@ -47,6 +50,51 @@ Main Conversation
 - Faster responses (Haiku for simple tasks)
 - Better security (tool restrictions)
 - Clearer output (agent-specific formatting)
+
+---
+
+## System Prompts
+
+The SDK uses three different system prompts depending on the execution context:
+
+### 1. Standard Claude Code Prompt
+**Source:** cli.js:285 (variable `mOA`)  
+**Usage:** Default for interactive Claude Code CLI sessions
+
+```
+You are Claude Code, Anthropic's official CLI for Claude.
+```
+
+### 2. SDK Mode Prompt
+**Source:** cli.js:285 (variable `Nw9`)  
+**Usage:** When running within Claude Agent SDK (non-interactive)
+
+```
+You are Claude Code, Anthropic's official CLI for Claude, running within the Claude Agent SDK.
+```
+
+### 3. Agent Mode Prompt
+**Source:** cli.js:285 (variable `dOA`)  
+**Usage:** For subagents spawned via the Task tool
+
+```
+You are a Claude agent, built on Anthropic's Claude Agent SDK.
+```
+
+**Selection Logic:**
+```javascript
+function dM1(A){
+  if(p3()==="vertex") return mOA;
+  if(A?.isNonInteractive){
+    if(A.hasAppendSystemPrompt){
+      if(kr()==="claude-vscode") return dOA;
+      return Nw9
+    }
+    return dOA
+  }
+  return mOA
+}
+```
 
 ---
 
@@ -446,6 +494,124 @@ type AgentColor =
 - 8 available colors
 - Suffix `_FOR_SUBAGENTS_ONLY` required
 - Assigned automatically if not specified
+
+---
+
+## Configuring Agents
+
+### Options Configuration
+
+Agents are configured through the `Options` type:
+
+```typescript
+export type Options = Omit<BaseOptions, 'customSystemPrompt' | 'appendSystemPrompt'> & {
+    agents?: Record<string, AgentDefinition>;
+    settingSources?: SettingSource[];
+    systemPrompt?: string | {
+        type: 'preset';
+        preset: 'claude_code';
+        append?: string;
+    };
+};
+```
+
+### SDK API AgentDefinition (Public)
+
+When using the SDK's `query()` function, use this structure:
+
+```typescript
+export type AgentDefinition = {
+    description: string;       // Human-readable description
+    tools?: string[];          // Optional array of allowed tool names
+    prompt: string;            // Custom system prompt
+    model?: 'sonnet' | 'opus' | 'haiku' | 'inherit';
+};
+```
+
+### Setting Up Agents
+
+```typescript
+import { query } from '@anthropic-ai/claude-agent-sdk';
+
+const response = await query({
+    prompt: "Help me analyze this codebase",
+    options: {
+        agents: {
+            // Code analysis specialist
+            code_analyzer: {
+                description: "Specialized agent for code analysis",
+                tools: ["Grep", "Glob", "Read", "Bash"],
+                prompt: "You are a code analysis expert. Focus on finding patterns, analyzing structure, and providing insights.",
+                model: "sonnet"
+            },
+
+            // Documentation specialist
+            doc_writer: {
+                description: "Specialized agent for writing documentation",
+                tools: ["Read", "Write", "Grep"],
+                prompt: "You are a technical writer. Create clear, comprehensive documentation with examples.",
+                model: "sonnet"
+            },
+
+            // Testing specialist
+            test_runner: {
+                description: "Specialized agent for running tests",
+                tools: ["Bash", "Read", "Grep"],
+                prompt: "You are a testing specialist. Run tests, analyze results, and report failures clearly.",
+                model: "haiku"  // Faster model for quick test runs
+            }
+        }
+    }
+});
+```
+
+### Tool Restrictions
+
+#### Available Tools
+- `Agent` - Delegate to subagents
+- `Bash` - Execute shell commands
+- `BashOutput` - Read background shell output
+- `Read` - Read files
+- `Write` - Write files
+- `Edit` - Edit files
+- `Glob` - Find files by pattern
+- `Grep` - Search file contents
+- `WebFetch` - Fetch web content
+- `WebSearch` - Search the web
+- `TodoWrite` - Manage todo lists
+- `NotebookEdit` - Edit Jupyter notebooks
+- `KillShell` - Kill background shells
+- `Mcp` - MCP tool calls
+- `ListMcpResources` - List MCP resources
+- `ReadMcpResource` - Read MCP resources
+
+#### Tool Restriction Strategy
+
+```typescript
+// Example: Research agent (read-only)
+research_agent: {
+    description: "Research specialist with read-only access",
+    tools: ["Grep", "Glob", "Read", "WebSearch", "WebFetch"],
+    prompt: "Research and gather information without modifying files",
+    model: "sonnet"
+}
+
+// Example: Safe executor (limited modification)
+safe_executor: {
+    description: "Execute commands with file editing",
+    tools: ["Bash", "Read", "Edit"],  // No Write (safer)
+    prompt: "Execute commands and make targeted edits only",
+    model: "sonnet"
+}
+
+// Example: Full access agent
+full_access: {
+    description: "Full capability agent",
+    // tools omitted = inherits all tools
+    prompt: "Handle complex tasks with full tool access",
+    model: "opus"
+}
+```
 
 ---
 
@@ -861,6 +1027,188 @@ Task({
   expected_output: "Pass/fail with specific issues"
 });
 ```
+
+---
+
+## Internal Implementation Details
+
+### Agent Tool (Task Tool)
+
+**Internal Name:** `Task` (CLI) vs `Agent` (SDK API)
+**Source:** cli.js:212 (variable `Y3="Task"`)
+
+### AgentInput Interface
+
+```typescript
+export interface AgentInput {
+    /**
+     * A short (3-5 word) description of the task
+     */
+    description: string;
+    /**
+     * The task for the agent to perform
+     */
+    prompt: string;
+    /**
+     * The type of specialized agent to use for this task
+     */
+    subagent_type: string;
+}
+```
+
+### Internal Agent Execution Flow
+
+#### 1. Agent Invocation
+```javascript
+async*call({prompt:A, subagent_type:B, description:Q}, Z, G, Y)
+```
+
+#### 2. Agent Lookup
+```javascript
+let I = Z.options.agentDefinitions.activeAgents.find((z)=>z.agentType===B)
+```
+
+#### 3. Model Selection
+```javascript
+let F = jy1(I.model, Z.options.mainLoopModel)
+```
+
+#### 4. Tool Resolution
+```javascript
+let V = S51(I, Z.options.tools).resolvedTools
+```
+
+#### 5. Message Construction
+```javascript
+let K = I?.forkContext ? Z.messages : void 0
+let D = I?.forkContext ? ZUQ(A,Y) : [mA({content:A})]
+```
+
+#### 6. System Prompt Construction
+```javascript
+let O = I.systemPrompt ? [I.systemPrompt] : [cLQ]
+let R = await lLQ(O, X, L)  // L = additional working directories
+```
+
+#### 7. Agent Execution
+```javascript
+for await(let p of Rt1({
+  agentDefinition:I,
+  promptMessages:K,
+  toolUseContext:Z,
+  canUseTool:G,
+  forkContextMessages:V,
+  isAsync:I?.isAsync||!1,
+  recordMessagesToSessionStorage:!0,
+  querySource:MwQ(I.agentType, X)
+}))
+```
+
+#### 8. Result Processing
+```javascript
+// For async agents
+yield {type:"result", data:{status:"async_launched", agentId:K, ...}}
+
+// For sync agents
+let q = Iw8(z, D)  // Extract metrics and content
+yield {type:"result", data:{status:"completed", prompt:A, ...q}}
+```
+
+### Agent Architect Prompt
+
+**Source:** cli.js:3047 (variable `jw8`)
+**Purpose:** Used by Claude to generate new agent definitions
+
+```javascript
+`You are an elite AI agent architect specializing in crafting high-performance agent configurations...
+
+When a user describes what they want an agent to do, you will:
+
+1. **Extract Core Intent**: Identify the fundamental purpose, key responsibilities, and success criteria...
+2. **Design Expert Persona**: Create a compelling expert identity...
+3. **Architect Comprehensive Instructions**: Develop a system prompt...
+4. **Optimize for Performance**: Include decision-making frameworks...
+5. **Create Identifier**: Design a concise, descriptive identifier...
+6. **Example agent descriptions**: Include examples of when this agent should be used...
+
+Your output must be a valid JSON object with exactly these fields:
+{
+  "identifier": "unique-agent-identifier",
+  "whenToUse": "Use this agent when... [includes examples]",
+  "systemPrompt": "You are... [complete system prompt]"
+}
+```
+
+### Session Information
+
+Agents are tracked in system messages:
+
+```typescript
+export type SDKSystemMessage = SDKMessageBase & {
+    type: 'system';
+    subtype: 'init';
+    agents?: string[];  // List of available agent types
+    apiKeySource: ApiKeySource;
+    claude_code_version: string;
+    cwd: string;
+    tools: string[];
+    mcp_servers: { name: string; status: string; }[];
+    model: string;
+    permissionMode: PermissionMode;
+    slash_commands: string[];
+    output_style: string;
+};
+```
+
+### Hook Integration
+
+```typescript
+export type SubagentStopHookInput = BaseHookInput & {
+    hook_event_name: 'SubagentStop';
+    stop_hook_active: boolean;
+};
+
+// Hook behavior:
+// Exit code 0 - stdout/stderr not shown
+// Exit code 2 - show stderr to subagent and continue
+// Other exit codes - show stderr to user only
+```
+
+### Model Usage Tracking
+
+```typescript
+export type SDKResultMessage = {
+    type: 'result';
+    subtype: 'success';
+    // ...
+    modelUsage: {
+        [modelName: string]: ModelUsage;
+    };
+    // ...
+};
+
+export type ModelUsage = {
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadInputTokens: number;
+    cacheCreationInputTokens: number;
+    webSearchRequests: number;
+    costUSD: number;
+    contextWindow: number;
+};
+```
+
+### Tool Name Constants
+
+| Tool | Constant | Value | Source Line |
+|------|----------|-------|-------------|
+| Grep | `bF` | "Grep" | ~212 |
+| Glob | `ND` | "Glob" | ~212 |
+| Read | `x8` | "Read" | ~212 |
+| Write | `wJ` | "Write" | ~212 |
+| Edit | `R3` | "Edit" | ~212 |
+| Bash | `q4` | "Bash" | ~212 |
+| Task | `Y3` | "Task" | 212 |
 
 ---
 

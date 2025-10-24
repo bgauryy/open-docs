@@ -1,7 +1,7 @@
-# Claude Agent SDK - Tool System Complete Reference
+# Claude Agent SDK - Complete Tool System Documentation
 
 **SDK Version**: 0.1.22
-**Extraction Date**: 2025-10-24
+**Last Updated**: 2025-10-24
 **Source**: `sdk-tools.d.ts`, verified from SDK source code
 
 ---
@@ -14,9 +14,12 @@
 4. [Tool Input Schemas](#tool-input-schemas)
 5. [Tool Execution Patterns](#tool-execution-patterns)
 6. [Tool Restrictions](#tool-restrictions)
-7. [Performance Characteristics](#performance-characteristics)
-8. [Real-World Usage Patterns](#real-world-usage-patterns)
-9. [Gotchas & Best Practices](#gotchas--best-practices)
+7. [Permission System](#permission-system)
+8. [MCP Tool Integration](#mcp-tool-integration)
+9. [Custom Tool Creation](#custom-tool-creation)
+10. [Performance Characteristics](#performance-characteristics)
+11. [Real-World Usage Patterns](#real-world-usage-patterns)
+12. [Gotchas & Best Practices](#gotchas--best-practices)
 
 ---
 
@@ -1088,6 +1091,430 @@ From agent definitions:
   "disallowedTools": ["Delete", "WebSearch"]
 }
 ```
+
+---
+
+## Permission System
+
+The SDK implements a sophisticated permission system to control tool usage and ensure user safety.
+
+### Permission Modes
+
+```typescript
+export type PermissionMode =
+  | 'default'              // Standard prompting
+  | 'acceptEdits'          // Auto-approve edits
+  | 'bypassPermissions'    // No prompts
+  | 'plan';                // Planning mode
+```
+
+### Permission Behaviors
+
+```typescript
+export type PermissionBehavior =
+  | 'allow'   // Execute without prompting
+  | 'deny'    // Block execution
+  | 'ask';    // Prompt user for approval
+```
+
+### CanUseTool Callback
+
+Custom permission logic via callback:
+
+```typescript
+export type CanUseTool = (
+  toolName: string,
+  input: Record<string, unknown>,
+  options: {
+    /** Signaled if the operation should be aborted */
+    signal: AbortSignal;
+
+    /**
+     * Suggestions for updating permissions so that the user will not be
+     * prompted again for this tool during this session.
+     * Typically used for 'always allow' functionality.
+     */
+    suggestions?: PermissionUpdate[];
+  }
+) => Promise<PermissionResult>;
+```
+
+### Permission Results
+
+```typescript
+export type PermissionResult =
+  | {
+      behavior: 'allow';
+      /** Updated tool input to use, if any changes needed */
+      updatedInput: Record<string, unknown>;
+      /** Permission updates to apply (e.g., 'always allow') */
+      updatedPermissions?: PermissionUpdate[];
+    }
+  | {
+      behavior: 'deny';
+      /** Reason for denial or guidance for the model */
+      message: string;
+      /** If true, interrupt execution completely */
+      interrupt?: boolean;
+    };
+```
+
+### Permission Updates
+
+```typescript
+export type PermissionUpdate =
+  | { type: 'addRules'; rules: PermissionRuleValue[]; behavior: PermissionBehavior; destination: PermissionUpdateDestination }
+  | { type: 'replaceRules'; rules: PermissionRuleValue[]; behavior: PermissionBehavior; destination: PermissionUpdateDestination }
+  | { type: 'removeRules'; rules: PermissionRuleValue[]; behavior: PermissionBehavior; destination: PermissionUpdateDestination }
+  | { type: 'setMode'; mode: PermissionMode; destination: PermissionUpdateDestination }
+  | { type: 'addDirectories'; directories: string[]; destination: PermissionUpdateDestination }
+  | { type: 'removeDirectories'; directories: string[]; destination: PermissionUpdateDestination };
+
+export type PermissionUpdateDestination =
+  | 'userSettings'      // Global user config
+  | 'projectSettings'   // Project-specific config
+  | 'localSettings'     // Local workspace config
+  | 'session';          // Current session only
+```
+
+### Permission Rules
+
+```typescript
+export type PermissionRuleValue = {
+  toolName: string;
+  ruleContent?: string;  // Optional pattern/condition
+};
+```
+
+### Tool-Specific Permission Requirements
+
+| Tool | Permission Type | Notes |
+|------|----------------|-------|
+| **FileRead** | Read | Checks file access |
+| **FileWrite** | Write | Checks directory access |
+| **FileEdit** | Write | Requires prior read |
+| **NotebookEdit** | Write | Notebook-specific |
+| **Bash** | Execute | Command-dependent |
+| **WebFetch** | Network | URL validation |
+| **WebSearch** | Network | US-only restriction |
+| **Agent** | None | Inherited from parent |
+| **Glob** | Read | Directory access |
+| **Grep** | Read | Search path access |
+| **TodoWrite** | None | In-memory only |
+| **BashOutput** | None | Read-only |
+| **KillShell** | Execute | Process termination |
+| **MCP Tools** | Varies | Server-dependent |
+
+---
+
+## MCP Tool Integration
+
+The SDK supports custom tools via the Model Context Protocol (MCP).
+
+### MCP Server Configuration
+
+```typescript
+export type McpServerConfig =
+  | McpStdioServerConfig      // External process
+  | McpSSEServerConfig        // Server-Sent Events
+  | McpHttpServerConfig       // HTTP transport
+  | McpSdkServerConfigWithInstance;  // In-process SDK
+
+// Stdio transport (most common)
+export type McpStdioServerConfig = {
+  type?: 'stdio';
+  command: string;
+  args?: string[];
+  env?: Record<string, string>;
+};
+
+// SSE transport
+export type McpSSEServerConfig = {
+  type: 'sse';
+  url: string;
+  headers?: Record<string, string>;
+};
+
+// HTTP transport
+export type McpHttpServerConfig = {
+  type: 'http';
+  url: string;
+  headers?: Record<string, string>;
+};
+
+// SDK transport (in-process)
+export type McpSdkServerConfig = {
+  type: 'sdk';
+  name: string;
+};
+
+export type McpSdkServerConfigWithInstance = McpSdkServerConfig & {
+  instance: McpServer;
+};
+```
+
+### Configuring MCP Servers
+
+Add MCP servers to SDK options:
+
+```typescript
+import { query } from '@anthropic-ai/claude-agent-sdk';
+
+const agent = query({
+  prompt: "Your task here",
+  options: {
+    mcpServers: {
+      // External stdio server
+      'my-external-tool': {
+        type: 'stdio',
+        command: 'node',
+        args: ['./mcp-server.js'],
+        env: { API_KEY: process.env.API_KEY }
+      },
+
+      // SSE server
+      'remote-service': {
+        type: 'sse',
+        url: 'https://api.example.com/mcp',
+        headers: { 'Authorization': 'Bearer token' }
+      },
+
+      // HTTP server
+      'http-service': {
+        type: 'http',
+        url: 'https://api.example.com/mcp',
+        headers: { 'X-API-Key': 'secret' }
+      },
+
+      // SDK server (in-process)
+      'custom-tools': createSdkMcpServer({
+        name: 'custom-tools',
+        version: '1.0.0',
+        tools: [/* ... */]
+      })
+    }
+  }
+});
+```
+
+### MCP Server Status
+
+Check server connection status:
+
+```typescript
+export type McpServerStatus = {
+  name: string;
+  status: 'connected' | 'failed' | 'needs-auth' | 'pending';
+  serverInfo?: {
+    name: string;
+    version: string;
+  };
+};
+
+// Query server status
+const status = await agent.mcpServerStatus();
+```
+
+---
+
+## Custom Tool Creation
+
+Create custom tools that run in-process using the SDK.
+
+### Tool Definition
+
+```typescript
+type SdkMcpToolDefinition<Schema extends ZodRawShape = ZodRawShape> = {
+  name: string;
+  description: string;
+  inputSchema: Schema;
+  handler: (
+    args: z.infer<ZodObject<Schema>>,
+    extra: unknown
+  ) => Promise<CallToolResult>;
+};
+```
+
+### Creating a Tool
+
+Use the `tool()` helper function:
+
+```typescript
+import { tool, createSdkMcpServer } from '@anthropic-ai/claude-agent-sdk';
+import { z } from 'zod';
+
+// Define the tool
+const greetTool = tool(
+  'greet',
+  'Greets a person by name',
+  {
+    name: z.string().describe('The name of the person to greet'),
+    formal: z.boolean().optional().describe('Use formal greeting')
+  },
+  async (args, extra) => {
+    const greeting = args.formal
+      ? `Good day, ${args.name}!`
+      : `Hey ${args.name}!`;
+
+    return {
+      content: [{
+        type: 'text',
+        text: greeting
+      }]
+    };
+  }
+);
+```
+
+### Creating an MCP Server
+
+Bundle tools into an MCP server:
+
+```typescript
+import { createSdkMcpServer } from '@anthropic-ai/claude-agent-sdk';
+
+const customServer = createSdkMcpServer({
+  name: 'my-custom-tools',
+  version: '1.0.0',
+  tools: [
+    greetTool,
+    // ... more tools
+  ]
+});
+```
+
+### Complete Example
+
+```typescript
+import {
+  query,
+  tool,
+  createSdkMcpServer
+} from '@anthropic-ai/claude-agent-sdk';
+import { z } from 'zod';
+
+// 1. Define custom tools
+const calculateTool = tool(
+  'calculate',
+  'Performs basic arithmetic calculations',
+  {
+    operation: z.enum(['add', 'subtract', 'multiply', 'divide'])
+      .describe('The arithmetic operation to perform'),
+    a: z.number().describe('First operand'),
+    b: z.number().describe('Second operand')
+  },
+  async (args) => {
+    let result: number;
+    switch (args.operation) {
+      case 'add': result = args.a + args.b; break;
+      case 'subtract': result = args.a - args.b; break;
+      case 'multiply': result = args.a * args.b; break;
+      case 'divide':
+        if (args.b === 0) {
+          return {
+            content: [{ type: 'text', text: 'Error: Division by zero' }],
+            isError: true
+          };
+        }
+        result = args.a / args.b;
+        break;
+    }
+
+    return {
+      content: [{
+        type: 'text',
+        text: `Result: ${result}`
+      }]
+    };
+  }
+);
+
+const weatherTool = tool(
+  'get_weather',
+  'Gets weather information for a city',
+  {
+    city: z.string().describe('City name'),
+    units: z.enum(['celsius', 'fahrenheit']).optional()
+      .describe('Temperature units')
+  },
+  async (args) => {
+    // In real implementation, call weather API
+    return {
+      content: [{
+        type: 'text',
+        text: `Weather in ${args.city}: Sunny, 72°${args.units === 'celsius' ? 'C' : 'F'}`
+      }]
+    };
+  }
+);
+
+// 2. Create MCP server with tools
+const customTools = createSdkMcpServer({
+  name: 'my-custom-tools',
+  version: '1.0.0',
+  tools: [calculateTool, weatherTool]
+});
+
+// 3. Use in agent
+const agent = query({
+  prompt: "What's 42 + 58? Also check the weather in San Francisco.",
+  options: {
+    mcpServers: {
+      'custom': customTools
+    }
+  }
+});
+
+// 4. Process results
+for await (const message of agent) {
+  console.log(message);
+}
+```
+
+### Tool Handler Return Type
+
+```typescript
+import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+
+// Return type for tool handlers
+type CallToolResult = {
+  content: Array<{
+    type: 'text' | 'image' | 'resource';
+    text?: string;
+    data?: string;
+    mimeType?: string;
+  }>;
+  isError?: boolean;
+};
+```
+
+### Best Practices for Custom Tools
+
+1. **Schema Design**:
+   - Use descriptive field names
+   - Include `.describe()` for all fields
+   - Mark optional fields with `.optional()`
+   - Validate inputs thoroughly
+
+2. **Error Handling**:
+   - Return `{ isError: true }` for errors
+   - Provide helpful error messages
+   - Handle edge cases gracefully
+
+3. **Performance**:
+   - Keep tools focused and single-purpose
+   - Use async/await for I/O operations
+   - Consider timeout constraints
+
+4. **Documentation**:
+   - Write clear tool descriptions
+   - Document expected behavior
+   - Include usage examples
+
+5. **Testing**:
+   - Test with various inputs
+   - Handle invalid data gracefully
+   - Verify error conditions
 
 ---
 
