@@ -637,7 +637,7 @@ function getDefaultExcludes(config?: Config): string[] {
 
 **Keywords:** `experimental`, `beta`
 
-**See:** `08_A2A_AGENT_SYSTEM.md` for details
+**See:** `a2a_agent_system.md` for details
 
 ---
 
@@ -651,7 +651,7 @@ function getDefaultExcludes(config?: Config): string[] {
 
 **Keywords:** `preview`, `beta`
 
-**See:** `09_IDE_INTEGRATION.md` for details
+**See:** `ide_integration.md` for details
 
 ---
 

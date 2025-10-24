@@ -19,7 +19,7 @@ This directory contains **11 comprehensive reference documents** covering the `g
 ## Document Index
 
 ### 1. Architecture Overview
-**File:** [`01_ARCHITECTURE_OVERVIEW.md`](./01_ARCHITECTURE_OVERVIEW.md)
+**File:** [`architecture_overview.md`](./architecture_overview.md)
 
 **Contents:**
 - System architecture and package structure
@@ -33,7 +33,7 @@ This directory contains **11 comprehensive reference documents** covering the `g
 ---
 
 ### 2. Tools Reference
-**File:** [`02_TOOLS_REFERENCE.md`](./02_TOOLS_REFERENCE.md)
+**File:** [`tools_reference.md`](./tools_reference.md)
 
 **Contents:**
 - Complete catalog of 15+ built-in tools
@@ -48,7 +48,7 @@ This directory contains **11 comprehensive reference documents** covering the `g
 ---
 
 ### 3. Prompts Reference
-**File:** [`03_PROMPTS_REFERENCE.md`](./03_PROMPTS_REFERENCE.md)
+**File:** [`prompts_reference.md`](./prompts_reference.md)
 
 **Contents:**
 - Core system prompt structure
@@ -64,7 +64,7 @@ This directory contains **11 comprehensive reference documents** covering the `g
 ---
 
 ### 4. Configuration Reference
-**File:** [`04_CONFIGURATION_REFERENCE.md`](./04_CONFIGURATION_REFERENCE.md)
+**File:** [`configuration_reference.md`](./configuration_reference.md)
 
 **Contents:**
 - Complete settings schema (100+ settings)
@@ -79,7 +79,7 @@ This directory contains **11 comprehensive reference documents** covering the `g
 ---
 
 ### 5. Security & Permissions
-**File:** [`05_SECURITY_PERMISSIONS.md`](./05_SECURITY_PERMISSIONS.md)
+**File:** [`security_permissions.md`](./security_permissions.md)
 
 **Contents:**
 - Security architecture (4 layers)
@@ -96,7 +96,7 @@ This directory contains **11 comprehensive reference documents** covering the `g
 ---
 
 ### 6. Hidden Features & Experimental
-**File:** [`06_HIDDEN_FEATURES.md`](./06_HIDDEN_FEATURES.md)
+**File:** [`hidden_features.md`](./hidden_features.md)
 
 **Contents:**
 - Experimental features (extension management, model router, codebase investigator)
@@ -112,7 +112,7 @@ This directory contains **11 comprehensive reference documents** covering the `g
 ---
 
 ### 7. CLI Commands & UI
-**File:** [`07_CLI_COMMANDS_UI.md`](./07_CLI_COMMANDS_UI.md)
+**File:** [`cli_commands_ui.md`](./cli_commands_ui.md)
 
 **Contents:**
 - 29+ slash commands with subcommands
@@ -128,7 +128,7 @@ This directory contains **11 comprehensive reference documents** covering the `g
 ---
 
 ### 8. A2A Agent System
-**File:** [`08_A2A_AGENT_SYSTEM.md`](./08_A2A_AGENT_SYSTEM.md)
+**File:** [`a2a_agent_system.md`](./a2a_agent_system.md)
 
 **Contents:**
 - A2A (Agent-to-Agent) server architecture
@@ -146,7 +146,7 @@ This directory contains **11 comprehensive reference documents** covering the `g
 ---
 
 ### 9. IDE Integration
-**File:** [`09_IDE_INTEGRATION.md`](./09_IDE_INTEGRATION.md)
+**File:** [`ide_integration.md`](./ide_integration.md)
 
 **Contents:**
 - VSCode extension reference
@@ -165,7 +165,7 @@ This directory contains **11 comprehensive reference documents** covering the `g
 ---
 
 ### 10. Testing Patterns
-**File:** [`10_TESTING_PATTERNS.md`](./10_TESTING_PATTERNS.md)
+**File:** [`testing_patterns.md`](./testing_patterns.md)
 
 **Contents:**
 - Test framework (Vitest)
@@ -181,7 +181,7 @@ This directory contains **11 comprehensive reference documents** covering the `g
 ---
 
 ### 11. Gotchas & Limitations
-**File:** [`11_GOTCHAS_LIMITATIONS.md`](./11_GOTCHAS_LIMITATIONS.md)
+**File:** [`gotchas_limitations.md`](./gotchas_limitations.md)
 
 **Contents:**
 - 30+ documented gotchas
