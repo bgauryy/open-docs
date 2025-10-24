@@ -23,9 +23,6 @@ By combining automated research, code analysis, and systematic organization, we 
 
 ## 📚 Available Documentation
 
-### [Claude Code](docs/claude-code/README.md)
-Complete documentation for the claude-code CLI tool, including all prompts, internal tools, architecture, and undocumented features.
-
 ### [Claude Agent SDK](docs/claude-agent-sdk/README.md)
 Comprehensive guide to the claude-agent-sdk, covering agents, tools, hooks, permissions, types, and implementation patterns.
 
