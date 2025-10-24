@@ -38,6 +38,12 @@ Smart AI code and GitHub research MCP server for exploring this repository. Prov
 
 → [github.com/bgauryy/octocode-mcp](https://github.com/bgauryy/octocode-mcp) | [Demo](https://www.youtube.com/watch?v=S2pcEjHo6CM)
 
+
+
+https://github.com/user-attachments/assets/825ebe61-4000-47a5-beb8-f241dde41a73
+
+
+
 ## 💬 Request Documentation
 
 Know an AI/CLI tool with incomplete docs, hidden features, or complex internals? [Open an issue](https://github.com/bgauryy/open-docs/issues) with the repo URL and what's missing.
