@@ -32,6 +32,7 @@ The Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`) is a TypeScript library 
 | **[Tool System](./tools-complete.md)** | Complete reference for all 17 built-in tools |
 | **[Hooks & Permissions](./hooks-permissions-complete.md)** | Security, control flow, and permission management |
 | **[Agent System](./agents-complete.md)** | Creating specialized sub-agents for complex tasks |
+| **[Memory & Context](./memory-and-context.md)** | Session management, context persistence, and memory best practices |
 
 ### Deep Dives
 
@@ -65,6 +66,7 @@ The Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`) is a TypeScript library 
 - **Understand the 17 tools** → [Tool System](./tools-complete.md)
 - **Build secure agents** → [Hooks & Permissions](./hooks-permissions-complete.md)
 - **Create sub-agents** → [Agent System](./agents-complete.md)
+- **Manage memory & sessions** → [Memory & Context](./memory-and-context.md)
 - **Avoid common mistakes** → [Implementation & Gotchas](./implementation-gotchas.md)
 - **Add custom tools** → [Comprehensive Guide - MCP Section](./comprehensive-guide.md)
 - **Install CLI plugins** → [Plugin System](./plugins.md)
@@ -140,7 +142,8 @@ Before building with the SDK, read [Implementation & Gotchas](./implementation-g
 ### Path 1: Building Your First Agent
 1. [Comprehensive Guide](./comprehensive-guide.md) - Get the overview
 2. [Tool System](./tools-complete.md) - Learn what tools do
-3. [Implementation & Gotchas](./implementation-gotchas.md) - Avoid mistakes
+3. [Memory & Context](./memory-and-context.md) - Understand sessions and context
+4. [Implementation & Gotchas](./implementation-gotchas.md) - Avoid mistakes
 
 ### Path 2: Building Secure Agents
 1. [Hooks & Permissions](./hooks-permissions-complete.md) - Understand security
@@ -149,9 +152,10 @@ Before building with the SDK, read [Implementation & Gotchas](./implementation-g
 
 ### Path 3: Understanding the Internals
 1. [System Prompts](./prompts-complete.md) - How agents are guided
-2. [Undocumented Features](./undocumented.md) - Hidden capabilities
-3. [Design & Architecture](./design.md) - Architecture patterns
-4. [CLI Analysis](./cli_analysis.md) - How Claude Code uses the SDK
+2. [Memory & Context](./memory-and-context.md) - Session architecture and persistence
+3. [Undocumented Features](./undocumented.md) - Hidden capabilities
+4. [Design & Architecture](./design.md) - Architecture patterns
+5. [CLI Analysis](./cli_analysis.md) - How Claude Code uses the SDK
 
 ### Path 4: Studying Claude Code
 1. [CLI Architecture](./architecture.md) - Complete CLI reference
