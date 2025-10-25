@@ -2,42 +2,73 @@
 
 > **Comprehensive technical documentation for Codex CLI, OpenAI's terminal-based AI coding agent**
 
-[![Documentation Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/openai/codex)
+[![Documentation Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/openai/codex)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](https://www.apache.org/licenses/LICENSE-2.0)
-[![Status](https://img.shields.io/badge/status-complete-brightgreen.svg)]()
+[![Status](https://img.shields.io/badge/status-enhanced-brightgreen.svg)]()
+[![Cross-Referenced](https://img.shields.io/badge/cross--referenced-official%20docs-blue.svg)]()
 
 ---
 
 ## 📚 What is This?
 
-This is a comprehensive technical documentation suite covering every aspect of **Codex CLI** - a sophisticated, Rust-based terminal coding agent. Whether you're contributing to the project, building integrations, or simply want to understand how it works, this documentation has you covered.
+This is a comprehensive **technical documentation suite** covering the **implementation details and internals** of **Codex CLI** - OpenAI's sophisticated, Rust-based terminal coding agent.
 
-**Note**: This is an in-depth technical analysis. For official documentation, visit: https://github.com/openai/codex/tree/main/docs
+### 🎯 For Developers & Contributors
+This documentation focuses on:
+- **Internal architecture** and implementation details
+- **Rust source code** analysis and patterns
+- **System internals** that official docs don't cover
+- **Development guides** for extending Codex
 
-**Coverage**: 15 in-depth documents • 150+ pages • 200+ code examples • 30+ architecture diagrams
+### 📖 For End Users
+Official user documentation is available at:
+- **Official Docs**: https://github.com/openai/codex/tree/main/docs
+- **Getting Started**: Start there for usage instructions
+
+### 🔗 Complementary, Not Competing
+These docs **complement** official documentation:
+- **Official Docs**: How to **use** Codex (configuration, commands, features)
+- **This Suite**: How Codex **works** internally (architecture, code, patterns)
+
+**Coverage**: **23** in-depth documents • **250+** pages • **300+** code examples • **50+** architecture diagrams
 
 ---
 
 ## 🚀 Quick Start
 
-### New to Codex CLI?
-Start here to understand what Codex is and how to use it:
-- **[01 - Overview](./01-overview.md)** - What is Codex CLI, key features, and quick start guide
+### ⚠️ START HERE: Official vs Custom Docs
+**Required Reading**: [00 - Official vs Custom Documentation](./00-OFFICIAL-VS-CUSTOM.md)
 
-### Want to Understand the Architecture?
-Learn how the system is designed:
-- **[02 - Architecture](./02-architecture.md)** - System design, components, and data flow
-- **[10 - Implementation](./10-implementation.md)** - Entry points, event loops, and core orchestrator
+**Understand the difference**:
+- **Official Docs** (OpenAI) = **How to use** Codex → [Go to official docs](../../context/codex/docs/)
+- **Custom Docs** (This Suite) = **How Codex works** internally → You're here!
 
-### Need to Configure or Deploy?
-Configuration and security references:
-- **[08 - Configuration](./08-configuration.md)** - Complete config reference and examples
-- **[07 - Security & Sandboxing](./07-security-sandboxing.md)** - Security model and approval policies
+### 🎯 Quick Navigation
 
-### Building Tools or Extensions?
-Developer guides for extending Codex:
-- **[06 - Tool System](./06-tool-system.md)** - Tool architecture and how to add new tools
-- **[11 - Tool Implementations](./11-tool-implementations.md)** - Detailed tool code examples
+#### New to Codex CLI?
+1. **[Official Getting Started](../../context/codex/docs/getting-started.md)** ← Start here for usage
+2. **[01 - Overview](./01-overview.md)** ← Then read this for architecture overview
+3. **[23 - Flow Diagrams](./23-flow-diagrams.md)** ← Visual guides to understand flows
+
+#### Want to Understand the Architecture?
+1. **[02 - Architecture](./02-architecture.md)** - Complete system design
+2. **[23 - Flow Diagrams](./23-flow-diagrams.md)** - Visual flow references
+3. **[10 - Implementation](./10-implementation.md)** - Core implementation patterns
+
+#### Need to Configure or Deploy?
+1. **[Official config.md](../../context/codex/docs/config.md)** ← User configuration guide
+2. **[08 - Configuration](./08-configuration.md)** ← Internal config system details
+3. **[Official sandbox.md](../../context/codex/docs/sandbox.md)** ← Security usage guide
+4. **[07 - Security & Sandboxing](./07-security-sandboxing.md)** ← Security implementation
+
+#### Building Tools or Extensions?
+1. **[06 - Tool System](./06-tool-system.md)** - Tool architecture deep-dive
+2. **[11 - Tool Implementations](./11-tool-implementations.md)** - Real code examples
+3. **[21 - Tool System Guide](./21-tool-system-practical.md)** - Practical development guide
+
+#### Understanding Automation (Exec Mode)?
+1. **[Official exec.md](../../context/codex/docs/exec.md)** ← How to use `codex exec`
+2. **[22 - Exec Mode Internals](./22-exec-mode-internals.md)** ← Implementation details
 
 ---
 
@@ -93,6 +124,20 @@ Authentication, external integrations, and code reference.
 | **[13 - Authentication](./13-authentication.md)** | Auth flows, token management | Auth integration |
 | **[14 - MCP Integration](./14-mcp-integration.md)** | Model Context Protocol support | MCP server authors |
 | **[15 - Code Reference](./15-code-reference.md)** | File index and code navigation | Finding implementations |
+| **[16 - Hidden Features](./16-hidden-features.md)** | Undocumented commands, flags, env vars | Power users, developers |
+| **[17 - CLI Reference](./17-cli-reference.md)** | Complete CLI commands and flags | Command-line users |
+| **[18 - MCP Development](./18-mcp-development.md)** | Building MCP servers from scratch | MCP developers |
+
+### ⚡ Advanced Topics & Practical Guides
+Automation, visual references, and optimization.
+
+| Document | Description | Best For |
+|----------|-------------|----------|
+| **[19 - Performance](./19-performance.md)** | Speed, cost, quality optimization | Tuning and optimization |
+| **[20 - State Management Guide](./20-state-management-practical.md)** | Practical state management guide | Session management |
+| **[21 - Tool System Guide](./21-tool-system-practical.md)** | Practical tool development guide | Tool creators |
+| **[22 - Exec Mode Internals](./22-exec-mode-internals.md)** | Non-interactive automation implementation | CI/CD, scripting |
+| **[23 - Flow Diagrams](./23-flow-diagrams.md)** | Complete visual flow references | Understanding system flows |
 
 ---
 
@@ -104,6 +149,7 @@ Authentication, external integrations, and code reference.
 1. Start with [01 - Overview](./01-overview.md) for the big picture
 2. Read [02 - Architecture](./02-architecture.md) for system design
 3. Check [03 - Prompt Processing](./03-prompt-processing.md) for request flow
+4. Explore [16 - Hidden Features](./16-hidden-features.md) for undocumented capabilities
 
 #### **Configure and Deploy Codex**
 1. Read [08 - Configuration](./08-configuration.md) for all options
@@ -119,6 +165,7 @@ Authentication, external integrations, and code reference.
 1. Read [05 - System Prompts](./05-system-prompts.md) for prompt customization
 2. Learn about AGENTS.md files and custom prompts
 3. Check [08 - Configuration](./08-configuration.md) for behavior settings
+4. Discover [16 - Hidden Features](./16-hidden-features.md) for experimental flags and env vars
 
 #### **Integrate with External Systems**
 1. Review [14 - MCP Integration](./14-mcp-integration.md) for MCP protocol
@@ -139,7 +186,8 @@ For those who want to use Codex effectively:
 1. [01 - Overview](./01-overview.md) - Learn the basics
 2. [08 - Configuration](./08-configuration.md) - Customize your setup
 3. [05 - System Prompts](./05-system-prompts.md) - Create custom prompts
-4. [07 - Security & Sandboxing](./07-security-sandboxing.md) - Understand safety
+4. [16 - Hidden Features](./16-hidden-features.md) - Unlock undocumented capabilities
+5. [07 - Security & Sandboxing](./07-security-sandboxing.md) - Understand safety
 
 ### **Path 2: Developer → Contributor**
 For those who want to contribute code:
@@ -161,13 +209,13 @@ For those building on top of Codex:
 
 ## 📊 Documentation Stats
 
-- **Total Documents**: 15 comprehensive guides
-- **Total Words**: ~80,000 words
-- **Code Examples**: 200+ with syntax highlighting
-- **Architecture Diagrams**: 30+ ASCII art diagrams
-- **Tables & References**: 50+ comparison tables
-- **Cross-References**: 100+ internal links
-- **Coverage**: Architecture, Tools, Security, Config, State, UI, Integration
+- **Total Documents**: **23** comprehensive guides
+- **Total Words**: ~**120,000** words
+- **Code Examples**: **300+** with syntax highlighting
+- **Architecture Diagrams**: **50+** ASCII art flow diagrams
+- **Tables & References**: **80+** comparison tables
+- **Cross-References**: **200+** internal links (+ official docs)
+- **Coverage**: Architecture, Tools, Security, Config, State, UI, Integration, Hidden Features, CLI Reference, MCP Development, Performance Tuning, Exec Mode, Flow Diagrams
 
 ---
 
@@ -206,10 +254,12 @@ Found an issue or want to improve the docs?
 
 | Property | Value |
 |----------|-------|
-| **Documentation Version** | 1.0.0 |
+| **Documentation Version** | 2.0.0 (Enhanced) |
 | **Codex CLI Version** | Latest Development |
-| **Last Updated** | October 23, 2025 |
+| **Last Updated** | October 25, 2025 |
 | **Format** | GitHub-flavored Markdown |
+| **Cross-Referenced** | ✅ Linked to official docs |
+| **Verified** | ✅ Code examples checked against source |
 
 ---
 
@@ -222,11 +272,36 @@ Found an issue or want to improve the docs?
 
 ## 🔗 Quick Links
 
-- [**Official Codex Documentation**](https://github.com/openai/codex/tree/main/docs) - Official docs from OpenAI
-- [Codex GitHub Repository](https://github.com/openai/codex)
-- [Official OpenAI Documentation](https://openai.com)
-- [Model Context Protocol](https://modelcontextprotocol.io)
+### Official Resources
+- **[Official Codex Documentation](../../context/codex/docs/)** - User guides from OpenAI (START HERE for usage)
+- **[Codex GitHub Repository](https://github.com/openai/codex)** - Source code
+- **[Model Context Protocol](https://modelcontextprotocol.io)** - MCP specification
+
+### Analysis Documents
+- **[Official vs Custom Comparison](../../OFFICIAL_VS_CUSTOM_COMPARISON.md)** - Detailed content comparison
+- **[Analysis Results](../../DOCS_ANALYSIS_RESULTS.md)** - Documentation analysis findings
+
+### Navigation Guides
+- **[00 - Official vs Custom](./00-OFFICIAL-VS-CUSTOM.md)** - Understand the relationship
+- **[23 - Flow Diagrams](./23-flow-diagrams.md)** - Visual system flows
+- **[15 - Code Reference](./15-code-reference.md)** - Source code navigation
 
 ---
 
-**Ready to dive in?** Start with [01 - Overview](./01-overview.md) or jump to any document that interests you!
+## 🎯 Where to Start?
+
+**Choose your path**:
+
+1. **I'm a new user** → [Official Getting Started](../../context/codex/docs/getting-started.md) first, then [01 - Overview](./01-overview.md)
+
+2. **I want to understand internals** → [23 - Flow Diagrams](./23-flow-diagrams.md) then [02 - Architecture](./02-architecture.md)
+
+3. **I'm building tools/extensions** → [06 - Tool System](./06-tool-system.md) and [11 - Tool Implementations](./11-tool-implementations.md)
+
+4. **I'm setting up CI/CD** → [Official exec.md](../../context/codex/docs/exec.md) then [22 - Exec Mode Internals](./22-exec-mode-internals.md)
+
+5. **I want to see comparisons** → [Official vs Custom Comparison](../../OFFICIAL_VS_CUSTOM_COMPARISON.md)
+
+---
+
+**Ready to dive in?** Start with [23 - Flow Diagrams](./23-flow-diagrams.md) for visual overviews, or [01 - Overview](./01-overview.md) for architecture introduction!

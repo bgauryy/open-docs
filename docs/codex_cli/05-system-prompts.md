@@ -1,4 +1,18 @@
-# Codex CLI - System Prompts & Instructions
+# Codex CLI - System Prompts Internals
+
+> **📚 Official User Guide**: For custom user prompts (slash commands), see [Official prompts.md](../../context/codex/docs/prompts.md)
+>
+> **🎯 This Document**: Focuses on **internal system prompts** - the base instructions Codex uses, not user custom prompts.
+
+---
+
+## Quick Links
+
+- **User Guide**: `/context/codex/docs/prompts.md` - How to create custom slash commands
+- **This Doc**: Internal system prompt architecture for developers
+- **Note**: This doc covers system prompts, not user custom prompts
+
+--- & Instructions
 
 ## Table of Contents
 - [Base System Prompts](#base-system-prompts)

@@ -1,4 +1,18 @@
-# Codex CLI - MCP Integration
+# Codex CLI - MCP Integration (Implementation Details)
+
+> **📚 Official User Guide**: For MCP setup and usage, see [Official advanced.md](../../context/codex/docs/advanced.md)
+>
+> **🎯 This Document**: Focuses on internal MCP implementation, connection management, and protocol details for developers.
+
+---
+
+## Quick Links
+
+- **User Guide**: `/context/codex/docs/advanced.md#model-context-protocol` - How to configure MCP servers
+- **This Doc**: MCP implementation details for developers
+- **Related**: [18-mcp-development.md](./18-mcp-development.md) - Building custom MCP servers
+
+---
 
 ## Table of Contents
 - [Model Context Protocol Overview](#model-context-protocol-overview)
