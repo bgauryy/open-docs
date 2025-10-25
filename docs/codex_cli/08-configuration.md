@@ -1,4 +1,18 @@
-# Codex CLI - Configuration System
+# Codex CLI - Configuration System (Implementation Details)
+
+> **📚 Official User Guide**: For user-facing configuration instructions, see [Official config.md](../../context/codex/docs/config.md)
+>
+> **🎯 This Document**: Focuses on internal implementation details, Rust code structures, and configuration system architecture for developers.
+
+---
+
+## Quick Links
+
+- **User Guide**: `/context/codex/docs/config.md` - How to configure Codex
+- **This Doc**: Implementation details for developers
+- **Related**: [04-llm-integration.md](./04-llm-integration.md) - Provider implementation details
+
+---
 
 ## Table of Contents
 - [Configuration Hierarchy](#configuration-hierarchy)
@@ -34,27 +48,50 @@
 
 ### Configuration Loading
 
-**Implementation**: `core/src/config_loader/mod.rs`
+**Implementation**: `core/src/config.rs`
 
+**Actual Config Structure** (from source):
 ```rust
+#[derive(Debug, Clone, PartialEq)]
+pub struct Config {
+    /// Optional override of model selection
+    pub model: String,
+
+    /// Model used specifically for review sessions
+    pub review_model: String,
+
+    pub model_family: ModelFamily,
+
+    /// Size of the context window for the model, in tokens
+    pub model_context_window: Option<i64>,
+
+    // ... many more fields (see config.rs:78-200+)
+}
+```
+
+**Loading Flow** (simplified for clarity):
+```rust
+// Simplified representation of actual loading logic
 pub fn load_config() -> Result<Config> {
     // 1. Load defaults
     let mut config = Config::default();
-    
-    // 2. Find and load config file
+
+    // 2. Find and load config.toml file
     if let Some(config_file) = find_config_file()? {
-        let file_config = parse_config_file(&config_file)?;
-        config.merge(file_config);
+        let toml_config = parse_toml_file(&config_file)?;
+        config.apply_toml_config(toml_config)?;
     }
-    
+
     // 3. Apply environment variables
     config.apply_env_overrides()?;
-    
-    // 4. Apply CLI flags (done later by clap)
-    
+
+    // 4. Apply CLI flags (done by ConfigOverrides)
+
     Ok(config)
 }
 ```
+
+**Note**: Code examples in this doc are simplified for readability. See actual source at `codex-rs/core/src/config.rs` for complete implementation.
 
 ---
 
@@ -306,50 +343,44 @@ codex --json -q "your prompt"
 
 **Implementation**: `cli/src/main.rs`
 
+**Actual CLI Structure** (from source at cli/src/main.rs:36):
 ```rust
-#[derive(Parser)]
-struct MultitoolCli {
-    /// Model to use (e.g., gpt-4, o4-mini)
-    #[clap(short = 'm', long)]
-    model: Option<String>,
-    
-    /// Provider (e.g., openai, azure, ollama)
-    #[clap(long)]
-    provider: Option<String>,
-    
-    /// Approval mode: suggest, auto-edit, full-auto
-    #[clap(short = 'a', long)]
-    approval_mode: Option<String>,
-    
-    /// Run non-interactively
-    #[clap(short = 'q', long)]
-    quiet: bool,
-    
-    /// Output as JSON
-    #[clap(long)]
-    json: bool,
-    
-    /// Disable loading AGENTS.md files
-    #[clap(long)]
-    no_project_doc: bool,
-    
-    /// Enable/disable desktop notifications
-    #[clap(long)]
-    notify: Option<bool>,
-    
-    /// Reasoning effort for o-series models (low/medium/high)
-    #[clap(long)]
-    reasoning_effort: Option<String>,
-    
-    /// Reasoning summary mode (auto/concise/detailed)
-    #[clap(long)]
-    reasoning_summary: Option<String>,
-    
-    /// Initial prompt
-    #[clap(value_name = "PROMPT")]
-    prompt: Option<String>,
+/// Codex CLI
+///
+/// If no subcommand is specified, options will be forwarded to the interactive CLI.
+#[derive(Debug, Parser)]
+#[clap(
+    author,
+    version,
+    subcommand_negates_reqs = true,
+    bin_name = "codex",
+    override_usage = "codex [OPTIONS] [PROMPT]\n       codex [OPTIONS] <COMMAND> [ARGS]"
+)]
+pub struct Cli {
+    // Flags are defined throughout the struct
+    // See actual file for complete list (~100+ lines)
 }
 ```
+
+**Common Flag Examples** (simplified representation):
+```rust
+// Model selection
+#[clap(short = 'm', long)]
+model: Option<String>,
+
+// Sandbox mode
+#[clap(long = "sandbox")]
+sandbox: Option<SandboxMode>,
+
+// Approval policy
+#[clap(short = 'a', long = "ask-for-approval")]
+approval_policy: Option<AskForApproval>,
+
+// Other common flags...
+// See cli/src/main.rs for complete definition
+```
+
+**📝 Note**: The actual CLI structure is more complex. This is a simplified view. For complete flag list, see official docs or run `codex --help`.
 
 ### Flag Examples
 

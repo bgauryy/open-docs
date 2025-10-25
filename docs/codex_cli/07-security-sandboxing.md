@@ -1,4 +1,22 @@
-# Codex CLI - Security & Sandboxing
+# Codex CLI - Security & Sandboxing (Implementation Details)
+
+> **📚 Official User Guide**: For sandbox usage and approval policies, see [Official sandbox.md](../../context/codex/docs/sandbox.md)
+>
+> **🎯 This Document**: Focuses on internal sandbox implementation, Seatbelt/Landlock details, and security architecture for developers.
+
+---
+
+## Quick Links
+
+- **User Guide**: `/context/codex/docs/sandbox.md` - How to use sandbox modes and approvals
+- **This Doc**: Implementation details for developers
+- **Related**: [08-configuration.md](./08-configuration.md) - Sandbox configuration options
+
+---
+
+**📝 Implementation Note**: Code examples in this document are simplified for clarity. Actual implementations in `codex-rs/core/src/sandboxing/`, `codex-rs/core/src/landlock.rs`, and related files may differ. See source code for complete details.
+
+---
 
 ## Table of Contents
 - [Security Model Overview](#security-model-overview)

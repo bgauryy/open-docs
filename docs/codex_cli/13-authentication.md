@@ -1,4 +1,18 @@
-# Codex CLI - Authentication
+# Codex CLI - Authentication (Implementation Details)
+
+> **📚 Official User Guide**: For login instructions and setup, see [Official authentication.md](../../context/codex/docs/authentication.md)
+>
+> **🎯 This Document**: Focuses on internal authentication implementation, OAuth2 flow details, and token management for developers.
+
+---
+
+## Quick Links
+
+- **User Guide**: `/context/codex/docs/authentication.md` - How to log in and authenticate
+- **This Doc**: Implementation details for developers
+- **Related**: [08-configuration.md](./08-configuration.md) - API key configuration
+
+---
 
 ## Table of Contents
 - [Auth Modes](#auth-modes)
@@ -34,9 +48,10 @@ providers:
     envKey: OPENAI_API_KEY
 ```
 
-**Usage**:
+**Usage** (simplified representation):
 ```rust
-// core/src/auth.rs
+// Conceptual implementation based on core/src/auth.rs
+// Actual implementation may differ - see source for details
 pub fn get_api_key(provider: &str) -> Result<String> {
     let env_key = format!("{}_API_KEY", provider.to_uppercase());
     env::var(&env_key)
@@ -44,6 +59,8 @@ pub fn get_api_key(provider: &str) -> Result<String> {
         .map_err(|_| CodexErr::AuthFailed(format!("No API key found")))
 }
 ```
+
+**📝 Note**: Code examples in this document are simplified for clarity. See `codex-rs/core/src/auth.rs` for actual implementation.
 
 ### 2. ChatGPT Authentication
 
@@ -89,7 +106,9 @@ When using ChatGPT auth, tokens are automatically refreshed:
 
 **Location**: `core/src/auth.rs`
 
+**Simplified Representation**:
 ```rust
+// Conceptual structure - actual implementation may vary
 pub struct AuthManager {
     auth_mode: AuthMode,
     storage: AuthStorage,
@@ -108,6 +127,11 @@ pub struct ChatGptTokens {
     pub expires_at: DateTime<Utc>,
 }
 ```
+
+**Actual Files**:
+- `codex-rs/core/src/auth.rs` - Main authentication logic
+- `codex-rs/core/src/mcp/auth.rs` - MCP-specific authentication
+- `codex-rs/core/src/token_data.rs` - Token handling
 
 ### Initialization
 

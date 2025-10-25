@@ -6,6 +6,8 @@
 
 The Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`) is a TypeScript library that lets you build AI agents powered by Claude. This documentation hub helps you understand how it works, what it can do, and how to use it effectively.
 
+**Note**: This is an in-depth technical analysis. For official documentation, visit: https://docs.claude.com/en/api/agent-sdk/overview
+
 **What makes it special?**
 - 17 built-in tools for file operations, commands, web search, and more
 - Add your own tools via Model Context Protocol (MCP)
@@ -180,9 +182,9 @@ All technical details, code examples, and API documentation live in the individu
 
 ## 🔗 Official Resources
 
-- **GitHub**: https://github.com/anthropics/claude-agent-sdk-typescript
-- **Official Docs**: https://docs.claude.com/en/api/agent-sdk/overview
-- **Discord**: https://anthropic.com/discord
+- [**Official Agent SDK Documentation**](https://docs.claude.com/en/api/agent-sdk/overview) - Official docs from Anthropic
+- [GitHub Repository](https://github.com/anthropics/claude-agent-sdk-typescript)
+- [Anthropic Discord](https://anthropic.com/discord)
 
 ---
 
