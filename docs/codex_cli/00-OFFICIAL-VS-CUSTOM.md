@@ -1,6 +1,8 @@
-# Official vs Custom Documentation - Key Differences
+# Official vs Custom Documentation - Complete Comparison
 
-This document explains the relationship between OpenAI's official Codex CLI documentation and this custom technical documentation suite.
+> **📋 Comprehensive Analysis**: This document contains the complete comparison between OpenAI's official Codex CLI documentation and this custom technical documentation suite, including detailed doc-by-doc analysis, quantified overlap statistics, and research findings.
+
+**Purpose**: Single source of truth for understanding the relationship, differences, and complementary nature of both documentation sets.
 
 ---
 
@@ -312,6 +314,233 @@ fn create_sandbox() -> Result<()> {
 - ✅ Advanced patterns
 
 **Together they provide**: Complete understanding from usage to implementation.
+
+---
+
+## Detailed Document-by-Document Comparison
+
+**Comprehensive analysis** of each documentation file showing exact content differences:
+
+### 1. Configuration
+
+| **Official: config.md (49KB)** | **Custom: 08-configuration.md (15KB)** |
+|--------------------------------|----------------------------------------|
+| **User-Facing Features** | **Implementation Details** |
+| | |
+| ✅ How to set model via CLI | ✅ `Config` struct definition in Rust |
+| ✅ Environment variables list | ✅ Config loading hierarchy in code |
+| ✅ Model provider configuration syntax | ✅ Platform-specific path resolution |
+| ✅ MCP server configuration examples | ✅ `ConfigOverrides` struct |
+| ✅ Profiles and how to use them | ✅ TOML parsing implementation |
+| ✅ Network tuning options | ✅ Priority system internals |
+| ✅ Reasoning effort/summary settings | ✅ Environment variable application logic |
+| ✅ Azure provider example | ⚠️ Config file format (both have this) |
+| ✅ Query parameters for providers | ⚠️ Environment variables (both have this) |
+| ✅ Complete config reference table | |
+| | |
+| **Content Type**: What to configure | **Content Type**: How config system works |
+| **Target Audience**: End users | **Target Audience**: Developers |
+
+**Duplication**: ~10% (basic config file format concepts)
+**Unique Value**: 90% - Custom shows implementation, official shows usage
+
+### 2. Authentication
+
+| **Official: authentication.md (3.3KB)** | **Custom: 13-authentication.md (16KB)** |
+|-----------------------------------------|-----------------------------------------|
+| **User Instructions** | **Implementation Architecture** |
+| | |
+| ✅ How to run `codex login` | ✅ `AuthManager` struct definition |
+| ✅ API key setup instructions | ✅ OAuth2 device flow complete code |
+| ✅ Headless machine workarounds | ✅ Token refresh logic implementation |
+| ✅ SSH port forwarding guide | ✅ Auth storage with file permissions |
+| ✅ Copying auth.json between machines | ✅ Refresh lock mechanism |
+| ✅ VPS connection instructions | ✅ `AuthMode` enum variants |
+| ⚠️ API key vs ChatGPT login options | ⚠️ Authentication methods overview |
+| | ✅ Polling logic with retry mechanism |
+| | ✅ Token expiry handling |
+| | ✅ Security: Unix 0600 file mode |
+| | ✅ Concurrent refresh prevention |
+| | |
+| **Content Type**: How to log in | **Content Type**: How auth system works |
+| **Target Audience**: End users | **Target Audience**: Developers |
+
+**Duplication**: ~5% (basic auth method concepts)
+**Unique Value**: 95% - Completely different focus
+
+### 3. Sandbox & Security
+
+| **Official: sandbox.md (6.1KB)** | **Custom: 07-security-sandboxing.md (17KB)** |
+|----------------------------------|-----------------------------------------------|
+| **Usage Guide** | **Implementation Deep-Dive** |
+| | |
+| ✅ Sandbox modes explained (read-only, workspace-write, full-access) | ✅ Complete defense-in-depth architecture |
+| ✅ Approval policies guide | ✅ Seatbelt .sbpl profile syntax |
+| ✅ Defaults and recommendations | ✅ Landlock API usage in Rust |
+| ✅ Common combinations table | ✅ `SandboxMode` enum implementation |
+| ✅ `--full-auto` flag usage | ✅ Path validation logic |
+| ✅ Platform differences overview | ✅ Network restriction implementation |
+| ✅ Testing sandbox with CLI | ✅ Approval flow state machine |
+| ⚠️ Sandbox modes (conceptual overlap) | ⚠️ Sandbox modes (implementation) |
+| ⚠️ Approval policies (usage) | ⚠️ Approval policies (internals) |
+| | ✅ macOS Seatbelt complete profile |
+| | ✅ Linux Landlock complete code |
+| | ✅ 5-layer security model |
+| | ✅ Resource limits implementation |
+| | ✅ Command safety checks |
+| | ✅ Writable roots validation |
+| | |
+| **Content Type**: When and how to use | **Content Type**: How sandboxing works |
+| **Target Audience**: End users | **Target Audience**: Security auditors, developers |
+
+**Duplication**: ~15% (basic concepts of modes and policies)
+**Unique Value**: 85% - Custom goes deep into OS-level implementation
+
+### 4. Prompts vs System Prompts
+
+| **Official: prompts.md (2.9KB)** | **Custom: 05-system-prompts.md (16KB)** |
+|----------------------------------|------------------------------------------|
+| **Custom User Prompts (Slash Commands)** | **Internal System Prompts** |
+| | |
+| ✅ How to create custom slash commands | ✅ Base system prompt structure |
+| ✅ Markdown file format | ✅ `prompt.md` (regular mode) internals |
+| ✅ Frontmatter syntax (description, argument-hint) | ✅ `prompt.exec.md` (exec mode) internals |
+| ✅ Placeholders: $1-$9, $ARGUMENTS | ✅ AGENTS.md discovery mechanism |
+| ✅ Named placeholders: $FILE, $TICKET_ID | ✅ System prompt composition |
+| ✅ File location: `~/.codex/prompts/` | ✅ Prompt caching optimization |
+| ✅ Running prompts via `/prompts:<name>` | ✅ Context window management |
+| ✅ Example: Draft PR helper | ✅ Token budget allocation |
+| | ✅ Personality guidelines in system prompt |
+| | ✅ Responsiveness rules |
+| | ✅ Tool usage policies embedded |
+| | ✅ Prompt hierarchy and merging |
+| | |
+| **Content Type**: User extensibility | **Content Type**: Internal instructions |
+| **Target Audience**: Users creating commands | **Target Audience**: Developers understanding system |
+
+**Duplication**: ~0% - Completely different topics!
+**Unique Value**: 100% - No overlap at all
+
+### 5. MCP Integration
+
+| **Official: advanced.md (5.7KB, MCP section)** | **Custom: 14-mcp-integration.md (16KB)** |
+|------------------------------------------------|-------------------------------------------|
+| **Usage and Setup** | **Implementation Architecture** |
+| | |
+| ✅ MCP client configuration syntax | ✅ `McpConnectionManager` structure |
+| ✅ MCP server mode usage (`codex mcp-server`) | ✅ Connection lifecycle management |
+| ✅ MCP inspector quickstart | ✅ Tool/resource discovery protocol |
+| ✅ `codex` tool parameters | ✅ Message routing internals |
+| ✅ `codex-reply` tool parameters | ✅ Server process spawning |
+| ✅ Timeout configuration tip | ✅ Stdio/SSE transport handling |
+| ✅ Example: tic-tac-toe demo | ✅ Tool registration in registry |
+| ⚠️ What MCP is (conceptual) | ⚠️ MCP protocol overview |
+| | ✅ Connection state management |
+| | ✅ Error handling and reconnection |
+| | ✅ Resource caching strategies |
+| | ✅ Tool call serialization |
+| | |
+| **Also in Custom: 18-mcp-development.md** | |
+| | ✅ Building custom MCP servers guide |
+| | ✅ Testing MCP servers |
+| | ✅ Debugging strategies |
+| | |
+| **Content Type**: How to use MCP | **Content Type**: How MCP works internally |
+| **Target Audience**: Users adding MCP | **Target Audience**: Developers, MCP server builders |
+
+**Duplication**: ~10% (basic MCP concept explanation)
+**Unique Value**: 90% - Custom goes deep into implementation
+
+### 6. Execution Modes
+
+| **Official: exec.md (5.2KB)** | **Custom: 22-exec-mode-internals.md (10KB)** |
+|-------------------------------|-----------------------------------------------|
+| **Non-Interactive Mode Guide** | **Implementation Details** |
+| | |
+| ✅ `codex exec` usage | ✅ CLI argument structure (`Cli` struct) |
+| ✅ Default output mode | ✅ Event system (ThreadEvent, ItemEvent) |
+| ✅ JSON output mode (`--json`) | ✅ Event processors implementation |
+| ✅ Structured output (`--output-schema`) | ✅ Human vs JSON output modes |
+| ✅ Git repository requirement | ✅ Session resume internals |
+| ✅ Resuming sessions (`exec resume`) | ✅ JSON Lines streaming format |
+| ✅ Authentication with `CODEX_API_KEY` | ✅ Structured output with JSON Schema |
+| | ✅ Implementation from exec/src/ files |
+| | |
+| **Content Type**: Non-interactive usage | **Content Type**: How exec mode works |
+| **Target Audience**: CI/CD users | **Target Audience**: Developers |
+
+**Duplication**: ~0% - Different focus (usage vs implementation)
+**Unique Value**: 100% - Complementary coverage
+
+### 7. Getting Started
+
+| **Official: getting-started.md (5.8KB)** | **Custom: 01-overview.md (6.9KB)** |
+|------------------------------------------|-------------------------------------|
+| **User Onboarding** | **System Overview** |
+| | |
+| ✅ CLI usage table | ✅ High-level architecture diagram |
+| ✅ Resuming sessions guide | ✅ Core components list |
+| ✅ Running with prompt as input | ✅ Tool system overview |
+| ✅ Example prompts (7 examples) | ✅ Conversation flow |
+| ✅ AGENTS.md usage | ✅ State persistence overview |
+| ✅ Tips & shortcuts | ⚠️ Basic command usage |
+| ✅ `@` file search | |
+| ✅ Esc-Esc to edit previous | |
+| ✅ `--cd` flag usage | |
+| ✅ `--add-dir` flag | |
+| ✅ Shell completions | |
+| ✅ Image input | |
+| | |
+| **Content Type**: Getting started quickly | **Content Type**: Understanding the system |
+| **Target Audience**: New users | **Target Audience**: Developers |
+
+**Duplication**: ~20% (basic command concepts)
+**Unique Value**: 80% - Different purposes
+
+### 8. Topics ONLY in Custom Docs
+
+These topics exist **only** in custom documentation:
+
+#### Architecture & Implementation
+
+| Document | Size | Content |
+|----------|------|---------|
+| **02-architecture.md** | 14KB | Complete system architecture, component interactions, event loops |
+| **03-prompt-processing.md** | 16KB | Prompt lifecycle, caching, context management, token optimization |
+| **04-llm-integration.md** | 14KB | Provider implementations, streaming, client architecture |
+| **09-state-management.md** | 17KB | Session persistence, state recovery, conversation history |
+| **10-implementation.md** | 18KB | Entry points, main loops, async patterns, core logic |
+| **11-tool-implementations.md** | 18KB | Individual tool code, execution patterns, approval flows |
+| **12-ui-layer.md** | 18KB | Terminal rendering, TUI components, event handling |
+| **15-code-reference.md** | 14KB | Source file index, module map, navigation guide |
+
+#### Advanced Topics
+
+| Document | Size | Content |
+|----------|------|---------|
+| **16-hidden-features.md** | 17KB | Undocumented commands, experimental flags, internal tools |
+| **17-cli-reference.md** | 13KB | Complete CLI command catalog with internals |
+| **18-mcp-development.md** | 19KB | Building custom MCP servers, testing, debugging |
+| **19-performance.md** | 14KB | Optimization techniques, cost reduction, speed tuning |
+| **20-state-management-practical.md** | 11KB | Practical state patterns and examples |
+| **21-tool-system-practical.md** | 11KB | Practical tool patterns and examples |
+| **23-flow-diagrams.md** | 30KB | 10 comprehensive visual flow references |
+
+**Total Unique Content**: ~245KB of developer-focused technical documentation
+
+### 9. Topics ONLY in Official Docs
+
+These topics exist **only** in official documentation:
+
+| Document | Size | Content |
+|----------|------|---------|
+| **install.md** | 1.5KB | Installation instructions |
+| **faq.md** | 2.8KB | Frequently asked questions |
+| **contributing.md** | 5.0KB | How to contribute to Codex |
+| **release_management.md** | 1.8KB | Release process |
+| **CLA.md** | 2.0KB | Contributor License Agreement |
+
+**Total User-Facing Only**: ~13KB of official user/contributor documentation
 
 ---
 
@@ -652,10 +881,11 @@ This comparison is based on:
 - **Quantitative overlap measurement** for each topic area
 - **Cross-validation** between official docs and actual implementation
 
-**Analysis Documents**:
-- [OFFICIAL_VS_CUSTOM_COMPARISON.md](../../OFFICIAL_VS_CUSTOM_COMPARISON.md) - Detailed side-by-side comparison
-- [DOCS_ANALYSIS_RESULTS.md](../../DOCS_ANALYSIS_RESULTS.md) - File-by-file analysis
+**Related Analysis Documents**:
+- [DOCS_ANALYSIS_RESULTS.md](../../DOCS_ANALYSIS_RESULTS.md) - File-by-file technical analysis
 - [ENHANCEMENT_SUMMARY.md](../../ENHANCEMENT_SUMMARY.md) - Complete enhancement record
+
+**Note**: This document consolidates all comparison analysis. The previous separate comparison file has been merged here for single-source-of-truth.
 
 ---
 

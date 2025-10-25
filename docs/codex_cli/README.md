@@ -278,7 +278,7 @@ Found an issue or want to improve the docs?
 - **[Model Context Protocol](https://modelcontextprotocol.io)** - MCP specification
 
 ### Analysis Documents
-- **[Official vs Custom Comparison](../../OFFICIAL_VS_CUSTOM_COMPARISON.md)** - Detailed content comparison
+- **[Official vs Custom Comparison](./00-OFFICIAL-VS-CUSTOM.md)** - Complete comparison with detailed doc-by-doc analysis
 - **[Analysis Results](../../DOCS_ANALYSIS_RESULTS.md)** - Documentation analysis findings
 
 ### Navigation Guides
@@ -300,7 +300,7 @@ Found an issue or want to improve the docs?
 
 4. **I'm setting up CI/CD** → [Official exec.md](../../context/codex/docs/exec.md) then [22 - Exec Mode Internals](./22-exec-mode-internals.md)
 
-5. **I want to see comparisons** → [Official vs Custom Comparison](../../OFFICIAL_VS_CUSTOM_COMPARISON.md)
+5. **I want to see comparisons** → [Official vs Custom Comparison](./00-OFFICIAL-VS-CUSTOM.md)
 
 ---
 
