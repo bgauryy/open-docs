@@ -5,8 +5,8 @@
 **Coverage:** 879+ TypeScript files across 5 packages
 **Purpose:** Comprehensive technical reference for developers, researchers, and system administrators
 
-> **📝 Note:** This is an unofficial technical reference for research and educational purposes.
-> For official documentation, visit [https://geminicli.com/docs/](https://geminicli.com/docs/)
+> **📝 Note:** This is an in-depth technical analysis for research and educational purposes.
+> For official documentation, visit: https://github.com/google-gemini/gemini-cli/tree/main/docs
 
 ---
 
@@ -335,6 +335,14 @@ If you discover additional undocumented features, gotchas, or limitations:
 
 ---
 
+## 🔗 Official Resources
+
+- [**Official Gemini CLI Documentation**](https://github.com/google-gemini/gemini-cli/tree/main/docs) - Official docs from Google
+- [Gemini CLI GitHub Repository](https://github.com/google-gemini/gemini-cli)
+- [Gemini API Documentation](https://ai.google.dev/docs)
+
+---
+
 ## License
 
 This documentation is provided as-is for reference purposes. The Gemini CLI codebase is licensed under Apache 2.0 (see LICENSE in the gemini-cli repository).
@@ -343,6 +351,4 @@ This documentation is provided as-is for reference purposes. The Gemini CLI code
 
 **Documentation Date:** October 24, 2024
 **Codebase Version:** gemini-cli (October 2024)
-
-For questions or issues, please refer to the Gemini CLI repository: https://github.com/google-gemini/gemini-cli
 

@@ -12,6 +12,8 @@
 
 This is a comprehensive technical documentation suite covering every aspect of **Codex CLI** - a sophisticated, Rust-based terminal coding agent. Whether you're contributing to the project, building integrations, or simply want to understand how it works, this documentation has you covered.
 
+**Note**: This is an in-depth technical analysis. For official documentation, visit: https://github.com/openai/codex/tree/main/docs
+
 **Coverage**: 15 in-depth documents • 150+ pages • 200+ code examples • 30+ architecture diagrams
 
 ---
@@ -220,6 +222,7 @@ Found an issue or want to improve the docs?
 
 ## 🔗 Quick Links
 
+- [**Official Codex Documentation**](https://github.com/openai/codex/tree/main/docs) - Official docs from OpenAI
 - [Codex GitHub Repository](https://github.com/openai/codex)
 - [Official OpenAI Documentation](https://openai.com)
 - [Model Context Protocol](https://modelcontextprotocol.io)
