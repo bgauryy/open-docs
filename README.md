@@ -38,6 +38,11 @@ Google's terminal CLI for Gemini AI. 5-package system with 15+ tools, agent-to-a
 
 OpenAI's Rust-based terminal coding agent. High-performance with advanced tools, security sandboxing, and comprehensive approval policies.
 
+### 4. OpenCode
+**[→ Full Documentation](docs/opencode/README.md)**
+
+Open-source, provider-agnostic AI coding agent built for the terminal. Client/server architecture with built-in LSP, supports multiple AI providers (Anthropic, OpenAI, Google, Bedrock), and features ACP/MCP protocol integration.
+
 ---
 
 ## 🔍 Recommended: Octocode MCP
@@ -55,6 +60,8 @@ https://github.com/user-attachments/assets/825ebe61-4000-47a5-beb8-f241dde41a73
 ## 💬 Request Documentation
 
 Know an AI/CLI tool with incomplete docs, hidden features, or complex internals? [Open an issue](https://github.com/bgauryy/open-docs/issues) with the repo URL and what's missing.
+
+**Have specific questions about documented repositories?** Also welcome! Open an issue with your questions about architecture, implementation details, or undocumented behaviors.
 
 ## ⭐ Support
 
