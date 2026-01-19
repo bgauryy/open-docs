@@ -12,6 +12,7 @@
 - [Creating AGENTS.md](#creating-agentsmd)
 - [Custom Instructions](#custom-instructions)
 - [Best Practices](#best-practices)
+- [Skills System](#skills-system-new-in-v10) - NEW
 
 ---
 
@@ -631,6 +632,143 @@ If your `AGENTS.md` is very long:
 2. **Keep only essential rules** in `AGENTS.md`
 
 3. **Reference external docs** instead of including full text
+
+---
+
+## Skills System (NEW in v1.0+)
+
+### What are Skills?
+
+**Skills** are reusable, discoverable instruction sets that can be referenced on-demand. Unlike AGENTS.md files which are always included, skills are explicitly invoked when needed.
+
+### Key Differences: Skills vs AGENTS.md
+
+| Feature | AGENTS.md | Skills |
+|---------|-----------|--------|
+| **Loading** | Always included | On-demand invocation |
+| **Location** | In/above project root | `.opencode/skill/` or `.claude/skills/` |
+| **Format** | Any markdown | SKILL.md with frontmatter |
+| **Scope** | Project-wide context | Task-specific instructions |
+| **Discovery** | Path traversal | Glob pattern matching |
+
+### Skill File Format
+
+Skills use **SKILL.md** files with YAML frontmatter:
+
+```markdown
+---
+name: code-review
+description: "Comprehensive code review guidelines"
+---
+
+# Code Review Skill
+
+## Guidelines
+
+- Check for security vulnerabilities
+- Review error handling
+- Verify test coverage
+- Assess performance implications
+...
+```
+
+**Required Frontmatter**:
+- `name` - Unique skill identifier
+- `description` - Brief description (shown in skill listing)
+
+### Skill Discovery Locations
+
+**1. OpenCode Skill Directories**:
+```
+.opencode/skill/<skill-name>/SKILL.md
+.opencode/skills/<skill-name>/SKILL.md
+```
+
+**2. Claude Code Compatible Directories**:
+```
+.claude/skills/<skill-name>/SKILL.md
+~/.claude/skills/<skill-name>/SKILL.md  # Global
+```
+
+### Example Skill Structure
+
+```
+.opencode/
+├── skill/
+│   ├── code-review/
+│   │   └── SKILL.md
+│   ├── api-design/
+│   │   └── SKILL.md
+│   └── testing/
+│       └── SKILL.md
+```
+
+### Creating a Skill
+
+**1. Create the directory**:
+```bash
+mkdir -p .opencode/skill/my-skill
+```
+
+**2. Create SKILL.md**:
+```markdown
+---
+name: my-skill
+description: "Brief description of what this skill does"
+---
+
+# My Skill
+
+## When to Use
+- Scenario 1
+- Scenario 2
+
+## Instructions
+1. Step 1
+2. Step 2
+
+## Examples
+...
+```
+
+### Using Skills
+
+Skills can be invoked through the skill tool when the AI agent needs specialized instructions for a task. The skill content is then loaded and provided as additional context.
+
+### Global Skills
+
+For skills you want available across all projects:
+
+```bash
+# Create global skill directory
+mkdir -p ~/.claude/skills/my-global-skill
+
+# Add SKILL.md
+echo "---
+name: my-global-skill
+description: My global skill
+---
+# Global Skill Content
+" > ~/.claude/skills/my-global-skill/SKILL.md
+```
+
+### Skill Discovery Behavior
+
+OpenCode discovers skills in this order:
+1. Project-level `.opencode/skill/` directories
+2. `.claude/skills/` directories (for Claude Code compatibility)
+3. Global `~/.claude/skills/` directory
+
+**Duplicate handling**: If the same skill name exists in multiple locations, a warning is logged and the first-discovered skill takes precedence.
+
+### Disabling Claude Code Skills
+
+If you don't want Claude Code skills loaded:
+
+```typescript
+// Environment variable
+OPENCODE_DISABLE_CLAUDE_CODE_SKILLS=true
+```
 
 ---
 

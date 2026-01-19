@@ -11,9 +11,9 @@
 **Tagline**: *"The AI coding agent built for the terminal."*
 
 ### Current Version
-- **Version**: 0.15.17
+- **Version**: 1.1.26
 - **Package**: `opencode-ai` (npm)
-- **Repository**: https://github.com/sst/opencode
+- **Repository**: https://github.com/sst/opencode (now: github.com/anomalyco/opencode)
 - **Website**: https://opencode.ai
 - **Discord**: https://opencode.ai/discord
 
@@ -337,21 +337,30 @@ opencode auth login
 - Rate limiting and retry logic
 - Local model compatibility
 
-### 5. **Rich Tool Ecosystem**
+### 5. **Rich Tool Ecosystem** (20+ tools)
 - File read/write/edit/multiedit
 - Bash command execution
 - LSP diagnostics and hover
 - Task and TODO management
-- Web search and fetch
+- **Web search** (Exa AI-powered) - NEW
+- **Code search** (API/SDK documentation) - NEW
+- Web fetch for page content
 - Patch application and review
+- Plan mode tools (enter/exit)
 
-### 6. **Multi-Project Management**
+### 6. **Skills System** (NEW in v1.0+)
+- Extensible skill discovery from `.opencode/skill/` and `.claude/skills/`
+- SKILL.md files with frontmatter metadata
+- Project-level and global skill support
+- Claude Code skill compatibility
+
+### 7. **Multi-Project Management**
 - Multiple simultaneous projects
 - Per-project configuration
 - Isolated sessions per project
 - Different worktrees support
 
-### 7. **Session Management**
+### 8. **Session Management**
 - Persistent conversation history
 - Session compaction for long chats
 - Revert and retry capabilities

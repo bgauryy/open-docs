@@ -866,6 +866,145 @@ app
 
 ---
 
+## Scheduler System
+
+The Scheduler system manages background tasks with interval-based execution and proper lifecycle management.
+
+### Overview
+
+Scheduler provides a centralized way to:
+- Register periodic tasks
+- Manage task scopes (instance vs global)
+- Handle cleanup on disposal
+- Prevent task collisions
+
+### Core API
+
+#### Scheduler.register(task)
+
+Registers a new periodic task with the scheduler.
+
+```typescript
+Scheduler.register({
+  name: 'my-task',
+  scope: 'instance',  // or 'global'
+  interval: '1h',     // or milliseconds
+  task: async () => {
+    // Task implementation
+  }
+})
+```
+
+**Parameters**:
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `name` | string | Unique task identifier |
+| `scope` | 'instance' \| 'global' | Task scope |
+| `interval` | string \| number | Execution interval |
+| `task` | () => Promise<void> | Task function |
+
+### Task Scopes
+
+#### Instance Scope
+Tasks tied to a specific project instance. Cleaned up when instance is disposed.
+
+```typescript
+Scheduler.register({
+  name: 'file-sync',
+  scope: 'instance',
+  interval: '5m',
+  task: () => syncProjectFiles()
+})
+```
+
+**Use Cases**:
+- File watching
+- Project-specific cleanup
+- Local cache management
+
+#### Global Scope
+Tasks that run across all instances. Persist until explicitly removed.
+
+```typescript
+Scheduler.register({
+  name: 'update-check',
+  scope: 'global',
+  interval: '24h',
+  task: () => checkForUpdates()
+})
+```
+
+**Use Cases**:
+- Update checks
+- Global cache cleanup
+- Telemetry (if enabled)
+
+### Interval Formats
+
+```typescript
+// String format
+'30s'   // 30 seconds
+'5m'    // 5 minutes
+'1h'    // 1 hour
+'24h'   // 24 hours
+'1d'    // 1 day
+
+// Milliseconds
+30000   // 30 seconds
+300000  // 5 minutes
+```
+
+### Built-in Scheduled Tasks
+
+| Task | Scope | Interval | Description |
+|------|-------|----------|-------------|
+| `snapshot-cleanup` | global | 24h | Prune old snapshots |
+| `session-prune` | global | 24h | Remove old sessions |
+| `update-check` | global | 24h | Check for updates |
+| `lsp-health` | instance | 5m | LSP server health check |
+| `file-cache-cleanup` | instance | 1h | Clear stale file caches |
+
+### Auto-cleanup
+
+When an instance is disposed:
+1. All instance-scoped tasks are cancelled
+2. Running tasks are allowed to complete (with timeout)
+3. Resources are released
+
+```typescript
+// Automatic cleanup on instance disposal
+instance.dispose() // Cancels all instance-scoped tasks
+```
+
+### Usage Examples
+
+**Register Custom Task**:
+```typescript
+import { Scheduler } from 'opencode'
+
+Scheduler.register({
+  name: 'custom-backup',
+  scope: 'instance',
+  interval: '30m',
+  task: async () => {
+    await backupSessionData()
+  }
+})
+```
+
+**Cancel Task**:
+```typescript
+Scheduler.cancel('custom-backup')
+```
+
+**Check Task Status**:
+```typescript
+const status = Scheduler.status('custom-backup')
+// { running: boolean, lastRun: Date, nextRun: Date }
+```
+
+---
+
 ## Summary
 
 OpenCode's architecture is designed for:
@@ -887,3 +1026,308 @@ The architecture supports the core mission: providing a powerful, open-source, p
 - **[03-session-management.md](./03-session-management.md)** - Deep dive into sessions
 - **[15-server-architecture.md](./15-server-architecture.md)** - Server API details
 
+
+
+---
+
+# Enhanced Architecture Documentation
+
+---
+
+## Scheduler System
+
+The Scheduler system manages background tasks with interval-based execution and proper lifecycle management.
+
+### Overview
+
+Scheduler provides a centralized way to:
+- Register periodic tasks
+- Manage task scopes (instance vs global)
+- Handle cleanup on disposal
+- Prevent task collisions
+
+### Core API
+
+#### Scheduler.register(task)
+
+Registers a new periodic task with the scheduler.
+
+```typescript
+Scheduler.register({
+  name: 'my-task',
+  scope: 'instance',  // or 'global'
+  interval: '1h',     // or milliseconds
+  task: async () => {
+    // Task implementation
+  }
+})
+```
+
+**Parameters**:
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `name` | string | Unique task identifier |
+| `scope` | 'instance' \| 'global' | Task scope |
+| `interval` | string \| number | Execution interval |
+| `task` | () => Promise<void> | Task function |
+
+### Task Scopes
+
+#### Instance Scope
+Tasks tied to a specific project instance. Cleaned up when instance is disposed.
+
+```typescript
+Scheduler.register({
+  name: 'file-sync',
+  scope: 'instance',
+  interval: '5m',
+  task: () => syncProjectFiles()
+})
+```
+
+**Use Cases**:
+- File watching
+- Project-specific cleanup
+- Local cache management
+
+#### Global Scope
+Tasks that run across all instances. Persist until explicitly removed.
+
+```typescript
+Scheduler.register({
+  name: 'update-check',
+  scope: 'global',
+  interval: '24h',
+  task: () => checkForUpdates()
+})
+```
+
+**Use Cases**:
+- Update checks
+- Global cache cleanup
+- Telemetry (if enabled)
+
+### Interval Formats
+
+```typescript
+// String format
+'30s'   // 30 seconds
+'5m'    // 5 minutes
+'1h'    // 1 hour
+'24h'   // 24 hours
+'1d'    // 1 day
+
+// Milliseconds
+30000   // 30 seconds
+300000  // 5 minutes
+```
+
+### Built-in Scheduled Tasks
+
+| Task | Scope | Interval | Description |
+|------|-------|----------|-------------|
+| `snapshot-cleanup` | global | 24h | Prune old snapshots |
+| `session-prune` | global | 24h | Remove old sessions |
+| `update-check` | global | 24h | Check for updates |
+| `lsp-health` | instance | 5m | LSP server health check |
+| `file-cache-cleanup` | instance | 1h | Clear stale file caches |
+
+### Auto-cleanup
+
+When an instance is disposed:
+1. All instance-scoped tasks are cancelled
+2. Running tasks are allowed to complete (with timeout)
+3. Resources are released
+
+```typescript
+// Automatic cleanup on instance disposal
+instance.dispose() // Cancels all instance-scoped tasks
+```
+
+### Usage Examples
+
+**Register Custom Task**:
+```typescript
+import { Scheduler } from 'opencode'
+
+Scheduler.register({
+  name: 'custom-backup',
+  scope: 'instance',
+  interval: '30m',
+  task: async () => {
+    await backupSessionData()
+  }
+})
+```
+
+**Cancel Task**:
+```typescript
+Scheduler.cancel('custom-backup')
+```
+
+**Check Task Status**:
+```typescript
+const status = Scheduler.status('custom-backup')
+// { running: boolean, lastRun: Date, nextRun: Date }
+```
+
+---
+
+## Prompt Context Assembly
+
+### Priority Order
+
+When assembling prompts, context is prioritized:
+
+1. **System Prompt** (highest priority)
+   - Core instructions
+   - Agent guidelines
+   - Tool definitions
+
+2. **Recent Messages** (high priority)
+   - Last N messages (configurable)
+   - Full content preserved
+
+3. **Active Files** (medium priority)
+   - Files currently being edited
+   - Recently read files
+
+4. **Project Context** (medium priority)
+   - AGENTS.md content
+   - Project configuration
+
+5. **Historical Context** (lower priority)
+   - Compacted summaries
+   - Older tool outputs
+
+6. **Background Context** (lowest priority)
+   - LSP diagnostics
+   - File tree structure
+
+### Truncation Rules
+
+When context exceeds token limits:
+
+1. Background context truncated first
+2. Historical context summarized
+3. Active files truncated to relevant sections
+4. Recent messages never truncated
+
+### File Inclusion Logic
+
+Files are included based on:
+- Recent access (read/write operations)
+- Explicit references in messages
+- LSP relationships (imports/exports)
+- Relevance scoring from embeddings
+
+---
+
+## AGENTS.md File Format
+
+### Complete Specification
+
+```markdown
+# Agent Name
+
+Description of the agent's purpose and behavior.
+
+## Guidelines
+
+- Specific instruction 1
+- Specific instruction 2
+
+## Allowed
+
+- Allowed action 1
+- Allowed action 2
+
+## Forbidden
+
+- Forbidden action 1
+- Forbidden action 2
+
+## Context
+
+Additional context for the agent.
+
+## Commands
+
+Custom commands the agent responds to:
+- `/command1` - Description
+- `/command2` - Description
+```
+
+### Sections
+
+| Section | Required | Description |
+|---------|----------|-------------|
+| Title (H1) | Yes | Agent name |
+| Description | Yes | Agent purpose |
+| Guidelines | No | Behavior instructions |
+| Allowed | No | Explicitly allowed actions |
+| Forbidden | No | Explicitly forbidden actions |
+| Context | No | Additional context |
+| Commands | No | Custom commands |
+
+### Inheritance
+
+AGENTS.md files inherit from parent directories:
+
+```
+project/
+├── AGENTS.md              # Base rules for project
+├── packages/
+│   └── api/
+│       └── AGENTS.md      # Inherits + adds API-specific rules
+```
+
+### Best Practices
+
+1. **Be Specific**: Vague instructions lead to inconsistent behavior
+2. **Use Examples**: Show expected input/output patterns
+3. **Define Boundaries**: Clear allowed/forbidden lists
+4. **Keep Updated**: Sync with project changes
+5. **Test Behavior**: Verify agent follows guidelines
+
+### Example - Security Agent
+
+```markdown
+# Security Agent
+
+You are a security-focused code reviewer. Your primary goal is to identify
+security vulnerabilities and suggest remediations.
+
+## Guidelines
+
+- Focus on OWASP Top 10 vulnerabilities
+- Flag any hardcoded credentials
+- Check for SQL injection risks
+- Verify input validation
+- Review authentication flows
+
+## Allowed
+
+- Suggest security improvements
+- Request additional context about auth flows
+- Recommend security libraries
+
+## Forbidden
+
+- Approve code with known vulnerabilities
+- Skip security checks for "quick fixes"
+- Ignore error handling
+
+## Context
+
+This project handles user PII and payment data.
+Compliance requirements: SOC2, PCI-DSS
+```
+
+---
+
+## Related Documentation
+
+- [03-session-management.md](./03-session-management.md) - Session lifecycle
+- [04-prompt-processing.md](./04-prompt-processing.md) - Prompt construction
+- [05-system-prompts.md](./05-system-prompts.md) - System prompts

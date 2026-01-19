@@ -42,6 +42,230 @@ interface Permissions {
 
 ---
 
+## Permission Modes
+
+OpenCode uses a permission system to control tool execution, balancing productivity with safety.
+
+### Available Modes
+
+| Mode | Description | Safety | Productivity |
+|------|-------------|--------|--------------|
+| `default` | Ask for each tool | High | Low |
+| `auto-edit` | Auto-approve edits | Medium | Medium |
+| `auto-approve` | Auto-approve most | Low | High |
+| `yolo` | Approve everything | None | Maximum |
+
+### Default Mode
+
+Every tool execution requires explicit approval:
+
+```
+🔧 Tool: bash
+📝 Command: npm install express
+
+[y] Approve  [n] Deny  [a] Always approve  [e] Edit
+```
+
+**Best for**: Sensitive projects, learning OpenCode, security-critical work.
+
+### Auto-Edit Mode
+
+Automatically approves file operations, asks for others:
+
+**Auto-approved**:
+- `read`, `write`, `edit`, `multiedit`, `patch`
+- `grep`, `glob`, `ls`
+- `lsp-*` tools
+
+**Requires approval**:
+- `bash` (command execution)
+- Web tools (`webfetch`, `websearch`)
+- External integrations
+
+**Best for**: Active development with trusted codebase.
+
+### Auto-Approve Mode
+
+Approves most operations, only asks for dangerous commands:
+
+**Auto-approved**: All tools except:
+- `bash` with dangerous patterns
+- Destructive file operations
+- System-level commands
+
+**Best for**: Experienced users, trusted environments.
+
+### YOLO Mode
+
+Approves everything without prompting:
+
+```bash
+opencode --permission yolo
+# or
+export OPENCODE_PERMISSION=yolo
+```
+
+**Warning**: Use only in:
+- Isolated development environments
+- CI/CD pipelines with safeguards
+- When you fully understand the risks
+
+**Never use in**:
+- Production systems
+- Shared machines
+- Projects with sensitive data
+
+---
+
+## Tool Security Details
+
+### Bash Tool Security
+
+**Dangerous Command Detection**:
+
+```typescript
+const DANGEROUS_PATTERNS = [
+  /rm\s+-rf\s+\/(?!\w)/,           // rm -rf /
+  /mkfs/,                           // Format filesystem
+  /dd\s+if=/,                       // Direct disk write
+  />\s*\/dev\/sd[a-z]/,            // Overwrite disk
+  /chmod\s+-R\s+777\s+\//,         // Recursive chmod root
+  /curl.*\|\s*(?:bash|sh)/,        // Pipe curl to shell
+  /wget.*\|\s*(?:bash|sh)/,        // Pipe wget to shell
+]
+```
+
+**Blocked by Default**:
+- Commands starting with `sudo` (unless allowed)
+- Commands modifying system directories
+- Network commands with shell pipes
+
+**Timeout Enforcement**:
+- Default: 30 seconds
+- Configurable per-call
+- Hard limit: 10 minutes
+
+### File Operation Security
+
+**Working Directory Validation**:
+- All file paths validated against project root
+- Symlink resolution to prevent escapes
+- Absolute paths converted to relative
+
+**Path Traversal Prevention**:
+```typescript
+// Blocked patterns
+'../../etc/passwd'
+'/etc/passwd'
+'~/.ssh/id_rsa'
+```
+
+### Web Tool Security
+
+**URL Validation**:
+- Only HTTP/HTTPS allowed
+- Private IP ranges blocked (unless configured)
+- Localhost blocked (unless configured)
+
+**Content Limits**:
+- Max response size: 10MB
+- Timeout: 30 seconds
+- Blocked file types: executables, archives
+
+---
+
+## Custom Tool Permissions
+
+### Defining Permissions
+
+```typescript
+import { defineTool } from 'opencode'
+
+export default defineTool({
+  name: 'my-tool',
+  permissions: ['custom-permission'],
+  // ...
+})
+```
+
+### Per-Tool Settings
+
+```json
+{
+  "tools": {
+    "bash": {
+      "permission": "default",
+      "timeout": 60000,
+      "allowSudo": false
+    },
+    "write": {
+      "permission": "auto-approve"
+    }
+  }
+}
+```
+
+---
+
+## Permission System Architecture
+
+```mermaid
+flowchart TD
+    A[Tool Request] --> B{Check Cache}
+    B -->|Cached Allow| C[Execute Tool]
+    B -->|Cached Deny| D[Reject]
+    B -->|Not Cached| E{Check Permission Mode}
+    
+    E -->|YOLO| C
+    E -->|Auto-Approve| F{Is Dangerous?}
+    E -->|Auto-Edit| G{Is File Op?}
+    E -->|Default| H[Prompt User]
+    
+    F -->|No| C
+    F -->|Yes| H
+    
+    G -->|Yes| C
+    G -->|No| H
+    
+    H -->|Approve| I{Remember?}
+    H -->|Deny| D
+    
+    I -->|Always| J[Cache Allow]
+    I -->|Once| C
+    
+    J --> C
+```
+
+---
+
+## Security Best Practices
+
+### For Users
+
+1. **Start with default mode** - Understand what tools do
+2. **Review bash commands** - Even auto-approved ones
+3. **Use project-specific configs** - Different settings per project
+4. **Monitor tool outputs** - Watch for unexpected behavior
+5. **Keep OpenCode updated** - Security fixes in updates
+
+### For Tool Developers
+
+1. **Validate all inputs** - Never trust parameters
+2. **Use minimal permissions** - Request only what's needed
+3. **Sanitize outputs** - Don't leak sensitive data
+4. **Handle errors gracefully** - No sensitive info in errors
+5. **Document security implications** - Users should know risks
+
+### For Administrators
+
+1. **Set appropriate defaults** - Match organizational policy
+2. **Audit tool usage** - Monitor for abuse
+3. **Restrict dangerous tools** - Disable if unnecessary
+4. **Use network isolation** - Limit API access
+5. **Regular security reviews** - Check configurations
+
+---
+
 ## Configuration
 
 ### Agent Permissions
@@ -419,3 +643,252 @@ Always start with restrictive permissions and gradually allow safe operations as
 
 For implementation, see `packages/opencode/src/permission/`.
 
+
+
+---
+
+# Enhanced Security Documentation
+
+---
+
+## Permission Modes
+
+### Overview
+
+OpenCode uses a permission system to control tool execution, balancing productivity with safety.
+
+### Available Modes
+
+| Mode | Description | Safety | Productivity |
+|------|-------------|--------|--------------|
+| `default` | Ask for each tool | High | Low |
+| `auto-edit` | Auto-approve edits | Medium | Medium |
+| `auto-approve` | Auto-approve most | Low | High |
+| `yolo` | Approve everything | None | Maximum |
+
+### Default Mode
+
+Every tool execution requires explicit approval:
+
+```
+🔧 Tool: bash
+📝 Command: npm install express
+
+[y] Approve  [n] Deny  [a] Always approve  [e] Edit
+```
+
+**Best for**: Sensitive projects, learning OpenCode, security-critical work.
+
+### Auto-Edit Mode
+
+Automatically approves file operations, asks for others:
+
+**Auto-approved**:
+- `read`, `write`, `edit`, `multiedit`, `patch`
+- `grep`, `glob`, `ls`
+- `lsp-*` tools
+
+**Requires approval**:
+- `bash` (command execution)
+- Web tools (`webfetch`, `websearch`)
+- External integrations
+
+**Best for**: Active development with trusted codebase.
+
+### Auto-Approve Mode
+
+Approves most operations, only asks for dangerous commands:
+
+**Auto-approved**: All tools except:
+- `bash` with dangerous patterns
+- Destructive file operations
+- System-level commands
+
+**Best for**: Experienced users, trusted environments.
+
+### YOLO Mode
+
+Approves everything without prompting:
+
+```bash
+opencode --permission yolo
+# or
+export OPENCODE_PERMISSION=yolo
+```
+
+**Warning**: Use only in:
+- Isolated development environments
+- CI/CD pipelines with safeguards
+- When you fully understand the risks
+
+**Never use in**:
+- Production systems
+- Shared machines
+- Projects with sensitive data
+
+---
+
+## Tool Security Details
+
+### Bash Tool Security
+
+**Dangerous Command Detection**:
+
+```typescript
+const DANGEROUS_PATTERNS = [
+  /rm\s+-rf\s+\/(?!\w)/,           // rm -rf /
+  /mkfs/,                           // Format filesystem
+  /dd\s+if=/,                       // Direct disk write
+  />\s*\/dev\/sd[a-z]/,            // Overwrite disk
+  /chmod\s+-R\s+777\s+\//,         // Recursive chmod root
+  /curl.*\|\s*(?:bash|sh)/,        // Pipe curl to shell
+  /wget.*\|\s*(?:bash|sh)/,        // Pipe wget to shell
+]
+```
+
+**Blocked by Default**:
+- Commands starting with `sudo` (unless allowed)
+- Commands modifying system directories
+- Network commands with shell pipes
+
+**Timeout Enforcement**:
+- Default: 30 seconds
+- Configurable per-call
+- Hard limit: 10 minutes
+
+### File Operation Security
+
+**Working Directory Validation**:
+- All file paths validated against project root
+- Symlink resolution to prevent escapes
+- Absolute paths converted to relative
+
+**Path Traversal Prevention**:
+```typescript
+// Blocked patterns
+'../../etc/passwd'
+'/etc/passwd'
+'~/.ssh/id_rsa'
+```
+
+### Web Tool Security
+
+**URL Validation**:
+- Only HTTP/HTTPS allowed
+- Private IP ranges blocked (unless configured)
+- Localhost blocked (unless configured)
+
+**Content Limits**:
+- Max response size: 10MB
+- Timeout: 30 seconds
+- Blocked file types: executables, archives
+
+---
+
+## Custom Tool Permissions
+
+### Defining Permissions
+
+```typescript
+import { defineTool } from 'opencode'
+
+export default defineTool({
+  name: 'my-tool',
+  permissions: ['custom-permission'],
+  // ...
+})
+```
+
+### Permission Configuration
+
+```json
+{
+  "permissions": {
+    "custom-permission": "auto-approve"
+  }
+}
+```
+
+### Per-Tool Settings
+
+```json
+{
+  "tools": {
+    "bash": {
+      "permission": "default",
+      "timeout": 60000,
+      "allowSudo": false
+    },
+    "write": {
+      "permission": "auto-approve"
+    }
+  }
+}
+```
+
+---
+
+## Security Best Practices
+
+### For Users
+
+1. **Start with default mode** - Understand what tools do
+2. **Review bash commands** - Even auto-approved ones
+3. **Use project-specific configs** - Different settings per project
+4. **Monitor tool outputs** - Watch for unexpected behavior
+5. **Keep OpenCode updated** - Security fixes in updates
+
+### For Tool Developers
+
+1. **Validate all inputs** - Never trust parameters
+2. **Use minimal permissions** - Request only what's needed
+3. **Sanitize outputs** - Don't leak sensitive data
+4. **Handle errors gracefully** - No sensitive info in errors
+5. **Document security implications** - Users should know risks
+
+### For Administrators
+
+1. **Set appropriate defaults** - Match organizational policy
+2. **Audit tool usage** - Monitor for abuse
+3. **Restrict dangerous tools** - Disable if unnecessary
+4. **Use network isolation** - Limit API access
+5. **Regular security reviews** - Check configurations
+
+---
+
+## Permission System Architecture
+
+```mermaid
+flowchart TD
+    A[Tool Request] --> B{Check Cache}
+    B -->|Cached Allow| C[Execute Tool]
+    B -->|Cached Deny| D[Reject]
+    B -->|Not Cached| E{Check Permission Mode}
+    
+    E -->|YOLO| C
+    E -->|Auto-Approve| F{Is Dangerous?}
+    E -->|Auto-Edit| G{Is File Op?}
+    E -->|Default| H[Prompt User]
+    
+    F -->|No| C
+    F -->|Yes| H
+    
+    G -->|Yes| C
+    G -->|No| H
+    
+    H -->|Approve| I{Remember?}
+    H -->|Deny| D
+    
+    I -->|Always| J[Cache Allow]
+    I -->|Once| C
+    
+    J --> C
+```
+
+---
+
+## Related Documentation
+
+- [06-tool-system.md](./06-tool-system.md) - Tool architecture
+- [07-tool-implementations.md](./07-tool-implementations.md) - Tool details
+- [13-configuration.md](./13-configuration.md) - Configuration

@@ -1,3 +1,6 @@
 context
+.context
 node_modules
 .claude
+yarn.lock
+TODO.md
