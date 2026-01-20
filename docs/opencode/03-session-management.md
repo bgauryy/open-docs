@@ -90,7 +90,7 @@ const rootSession: Session.Info = {
   projectID: "proj_abcdefgh",
   directory: "/Users/me/project",
   title: "New session - 2025-01-15T10:30:00.000Z",
-  version: "0.15.17",
+  version: "1.1.26",
   time: {
     created: 1736936400000,
     updated: 1736936400000,
@@ -111,7 +111,7 @@ const childSession: Session.Info = {
   parentID: "sess_01234567",  // Fork from this session
   directory: "/Users/me/project",
   title: "Child session - 2025-01-15T11:00:00.000Z",
-  version: "0.15.17",
+  version: "1.1.26",
   time: {
     created: 1736938200000,
     updated: 1736938200000,
@@ -139,7 +139,7 @@ const session = await Session.create({
   projectID: "proj_current",
   directory: "/current/directory",
   title: "Implement auth system",
-  version: "0.15.17",
+  version: "1.1.26",
   time: {
     created: 1736936400000,
     updated: 1736936400000,
@@ -734,6 +734,211 @@ OPENCODE_DISABLE_PRUNE=1 opencode
 
 ---
 
+## Snapshot System
+
+The Snapshot system provides Git-based file versioning for undo/redo functionality, allowing you to restore files to previous states after edits.
+
+### Overview
+
+Snapshots are created automatically before file modifications, enabling:
+- Undo changes made by tools
+- Restore files to any previous state
+- Diff between current and historical states
+- Automatic cleanup of old snapshots
+
+**Storage Location**: `~/.opencode/data/snapshot/<project-id>/`
+
+### Core API
+
+#### Snapshot.track()
+Creates a restore point before file edits.
+
+```typescript
+// Called automatically before write/edit operations
+const snapshotHash = await Snapshot.track(filePath)
+// Returns: Git commit hash of the snapshot
+```
+
+**When Called**:
+- Before `write` tool execution
+- Before `edit` tool execution
+- Before `multiedit` tool execution
+- Before `patch` tool execution
+
+#### Snapshot.restore(hash)
+Restores a file to a previous snapshot state.
+
+```typescript
+await Snapshot.restore(snapshotHash)
+// Restores all files to the state at that snapshot
+```
+
+**Behavior**:
+- Reverts file contents to snapshot state
+- Creates a new snapshot of current state first (safety)
+- Updates file watchers
+
+#### Snapshot.revert(patches)
+Reverts specific file changes using patch data.
+
+```typescript
+await Snapshot.revert(patchData)
+// Surgically reverts specific changes
+```
+
+**Use Case**: When you want to undo specific edits without reverting everything.
+
+#### Snapshot.diff(hash)
+Generates a diff between current state and a snapshot.
+
+```typescript
+const diff = await Snapshot.diff(snapshotHash)
+// Returns: Unified diff format string
+```
+
+**Output Format**:
+```diff
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -10,6 +10,7 @@
+ import { User } from './types'
++import { logger } from './utils'
+```
+
+#### Snapshot.cleanup()
+Prunes old snapshots based on retention policy.
+
+```typescript
+await Snapshot.cleanup()
+// Removes snapshots older than retention period
+```
+
+**Retention Policy**:
+- Default: 7 days
+- Configurable via settings
+- Runs automatically via Scheduler
+
+### Integration with Scheduler
+
+The Snapshot cleanup task is registered with the Scheduler system:
+
+```typescript
+Scheduler.register({
+  name: 'snapshot-cleanup',
+  scope: 'global',
+  interval: '1d',  // Run daily
+  task: () => Snapshot.cleanup()
+})
+```
+
+### Usage Examples
+
+**Manual Restore**:
+```bash
+# In TUI, use keyboard shortcut or command
+# Ctrl+Z for undo (restores last snapshot)
+```
+
+**Programmatic Access**:
+```typescript
+import { Snapshot } from 'opencode'
+
+// Create snapshot
+const hash = await Snapshot.track('src/app.ts')
+
+// Make changes...
+
+// View diff
+const changes = await Snapshot.diff(hash)
+console.log(changes)
+
+// Restore if needed
+await Snapshot.restore(hash)
+```
+
+---
+
+## Share System
+
+The Share system enables session sharing to OpenCode cloud for collaboration and sharing.
+
+### Overview
+
+Share sessions publicly or with specific users via unique URLs hosted on `api.opencode.ai`.
+
+### Core API
+
+#### Share.create(sessionID)
+Creates a shareable URL for a session.
+
+```typescript
+const shareInfo = await Share.create(sessionId)
+// Returns: { url: string, secret: string }
+```
+
+**Returns**:
+- `url`: Public URL to view the session
+- `secret`: Secret key for deletion (save this!)
+
+#### Share.remove(sessionID, secret)
+Deletes a shared session.
+
+```typescript
+await Share.remove(sessionId, secret)
+// Removes the shared session from cloud
+```
+
+**Requirements**:
+- Must provide the secret from `Share.create()`
+- Irreversible operation
+
+#### Share.sync(key, content)
+Real-time synchronization of session content.
+
+```typescript
+await Share.sync(shareKey, {
+  messages: [...],
+  parts: [...]
+})
+// Updates shared session in real-time
+```
+
+### Auto-Sync Feature
+
+When `OPENCODE_AUTO_SHARE` is enabled:
+- Sessions are automatically shared on creation
+- Messages sync in real-time as they're added
+- Tool outputs sync automatically
+- No manual action required
+
+**Enable Auto-Sync**:
+```bash
+export OPENCODE_AUTO_SHARE=true
+```
+
+### API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `api.opencode.ai/share` | POST | Create share |
+| `api.opencode.ai/share/:id` | DELETE | Remove share |
+| `api.opencode.ai/share/:id/sync` | PUT | Sync content |
+| `api.opencode.ai/share/:id` | GET | View shared session |
+
+### Disabling Share
+
+To completely disable sharing functionality:
+```bash
+export OPENCODE_DISABLE_SHARE=true
+```
+
+This will:
+- Hide share commands in TUI
+- Disable share API endpoints
+- Prevent auto-share even if enabled
+
+---
+
 ## Session Operations
 
 ### List Sessions
@@ -996,6 +1201,282 @@ Sessions are the foundation of OpenCode's conversation model, enabling powerful 
 
 - **[04-prompt-processing.md](./04-prompt-processing.md)** - Prompt system deep dive
 - **[05-system-prompts.md](./05-system-prompts.md)** - Custom prompts and agents
-- **[09-state-management.md](./09-state-management.md)** - State persistence
+- **[09-provider-system.md](./09-provider-system.md)** - Provider system
 
 
+
+
+---
+
+# Enhanced Session Documentation
+
+---
+
+## Snapshot System
+
+The Snapshot system provides Git-based file versioning for undo/redo functionality, allowing you to restore files to previous states after edits.
+
+### Overview
+
+Snapshots are created automatically before file modifications, enabling:
+- Undo changes made by tools
+- Restore files to any previous state
+- Diff between current and historical states
+- Automatic cleanup of old snapshots
+
+**Storage Location**: `~/.opencode/data/snapshot/<project-id>/`
+
+### Core API
+
+#### Snapshot.track()
+Creates a restore point before file edits.
+
+```typescript
+// Called automatically before write/edit operations
+const snapshotHash = await Snapshot.track(filePath)
+// Returns: Git commit hash of the snapshot
+```
+
+**When Called**:
+- Before `write` tool execution
+- Before `edit` tool execution
+- Before `multiedit` tool execution
+- Before `patch` tool execution
+
+#### Snapshot.restore(hash)
+Restores a file to a previous snapshot state.
+
+```typescript
+await Snapshot.restore(snapshotHash)
+// Restores all files to the state at that snapshot
+```
+
+**Behavior**:
+- Reverts file contents to snapshot state
+- Creates a new snapshot of current state first (safety)
+- Updates file watchers
+
+#### Snapshot.revert(patches)
+Reverts specific file changes using patch data.
+
+```typescript
+await Snapshot.revert(patchData)
+// Surgically reverts specific changes
+```
+
+**Use Case**: When you want to undo specific edits without reverting everything.
+
+#### Snapshot.diff(hash)
+Generates a diff between current state and a snapshot.
+
+```typescript
+const diff = await Snapshot.diff(snapshotHash)
+// Returns: Unified diff format string
+```
+
+**Output Format**:
+```diff
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -10,6 +10,7 @@
+ import { User } from './types'
++import { logger } from './utils'
+```
+
+#### Snapshot.cleanup()
+Prunes old snapshots based on retention policy.
+
+```typescript
+await Snapshot.cleanup()
+// Removes snapshots older than retention period
+```
+
+**Retention Policy**:
+- Default: 7 days
+- Configurable via settings
+- Runs automatically via Scheduler
+
+### Integration with Scheduler
+
+The Snapshot cleanup task is registered with the Scheduler system:
+
+```typescript
+Scheduler.register({
+  name: 'snapshot-cleanup',
+  scope: 'global',
+  interval: '1d',  // Run daily
+  task: () => Snapshot.cleanup()
+})
+```
+
+### Usage Examples
+
+**Manual Restore**:
+```bash
+# In TUI, use keyboard shortcut or command
+# Ctrl+Z for undo (restores last snapshot)
+```
+
+**Programmatic Access**:
+```typescript
+import { Snapshot } from 'opencode'
+
+// Create snapshot
+const hash = await Snapshot.track('src/app.ts')
+
+// Make changes...
+
+// View diff
+const changes = await Snapshot.diff(hash)
+console.log(changes)
+
+// Restore if needed
+await Snapshot.restore(hash)
+```
+
+---
+
+## Share System
+
+The Share system enables session sharing to OpenCode cloud for collaboration and sharing.
+
+### Overview
+
+Share sessions publicly or with specific users via unique URLs hosted on `api.opencode.ai`.
+
+### Core API
+
+#### Share.create(sessionID)
+Creates a shareable URL for a session.
+
+```typescript
+const shareInfo = await Share.create(sessionId)
+// Returns: { url: string, secret: string }
+```
+
+**Returns**:
+- `url`: Public URL to view the session
+- `secret`: Secret key for deletion (save this!)
+
+#### Share.remove(sessionID, secret)
+Deletes a shared session.
+
+```typescript
+await Share.remove(sessionId, secret)
+// Removes the shared session from cloud
+```
+
+**Requirements**:
+- Must provide the secret from `Share.create()`
+- Irreversible operation
+
+#### Share.sync(key, content)
+Real-time synchronization of session content.
+
+```typescript
+await Share.sync(shareKey, {
+  messages: [...],
+  parts: [...]
+})
+// Updates shared session in real-time
+```
+
+### Auto-Sync Feature
+
+When `OPENCODE_AUTO_SHARE` is enabled:
+- Sessions are automatically shared on creation
+- Messages sync in real-time as they're added
+- Tool outputs sync automatically
+- No manual action required
+
+**Enable Auto-Sync**:
+```bash
+export OPENCODE_AUTO_SHARE=true
+```
+
+### API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `api.opencode.ai/share` | POST | Create share |
+| `api.opencode.ai/share/:id` | DELETE | Remove share |
+| `api.opencode.ai/share/:id/sync` | PUT | Sync content |
+| `api.opencode.ai/share/:id` | GET | View shared session |
+
+### Disabling Share
+
+To completely disable sharing functionality:
+```bash
+export OPENCODE_DISABLE_SHARE=true
+```
+
+This will:
+- Hide share commands in TUI
+- Disable share API endpoints
+- Prevent auto-share even if enabled
+
+---
+
+## Session Compaction
+
+Compaction reduces session size by summarizing older messages while preserving recent context.
+
+### What is Compaction?
+
+Long sessions accumulate many messages and tool outputs, increasing:
+- Memory usage
+- Token counts for API calls
+- Storage requirements
+
+Compaction summarizes older content to reduce overhead while maintaining useful context.
+
+### Automatic Triggers
+
+Compaction runs automatically when:
+- Session message count exceeds threshold (default: 50)
+- Total token count exceeds limit (default: 100K tokens)
+- Session age exceeds threshold (default: 24 hours of active use)
+
+### Manual Compaction
+
+Trigger compaction manually via CLI:
+```bash
+opencode compact --session <session-id>
+```
+
+Or in TUI via keyboard shortcut.
+
+### Compaction Algorithm
+
+1. **Identify compactable messages**: Messages older than the recent window (last 10 messages)
+2. **Group by context**: Group related messages (same topic/task)
+3. **Summarize**: Generate concise summary of each group
+4. **Replace**: Replace original messages with summary
+5. **Preserve**: Keep tool outputs referenced by recent messages
+
+### Configuration
+
+```json
+{
+  "compaction": {
+    "enabled": true,
+    "messageThreshold": 50,
+    "tokenThreshold": 100000,
+    "recentWindow": 10
+  }
+}
+```
+
+### Disable Compaction
+
+```bash
+export OPENCODE_DISABLE_AUTOCOMPACT=true
+```
+
+---
+
+## Related Documentation
+
+- [04-prompt-processing.md](./04-prompt-processing.md) - Context management
+- [26-resource-memory-management.md](./26-resource-memory-management.md) - Memory optimization
+- [01-architecture.md](./01-architecture.md) - System architecture

@@ -371,6 +371,129 @@ const value2 = await expensiveValue()
 
 ---
 
+## PTY System
+
+Pseudo-terminal handling for bash execution:
+
+**PTY Creation**:
+```typescript
+const pty = createPty({
+  shell: '/bin/bash',
+  cwd: projectPath,
+  env: process.env,
+  cols: 80,
+  rows: 24
+})
+```
+
+**Signal Handling**:
+- `SIGINT` (Ctrl+C) - Interrupt
+- `SIGTERM` - Terminate
+- `SIGKILL` - Force kill
+
+**Buffer Management**:
+- Output buffered up to 100KB
+- Older output discarded when limit reached
+- Configurable via `OPENCODE_EXPERIMENTAL_BASH_MAX_OUTPUT_LENGTH`
+
+---
+
+## Shell Detection
+
+Detects user's preferred shell:
+
+```typescript
+const shell = detectShell()
+// Returns: 'bash', 'zsh', 'fish', 'pwsh', etc.
+```
+
+**Detection Order**:
+1. `SHELL` environment variable
+2. `/etc/passwd` entry
+3. System default
+
+**Platform Differences**:
+| Platform | Default Shell |
+|----------|---------------|
+| macOS | zsh |
+| Linux | bash |
+| Windows | pwsh / cmd |
+
+---
+
+## ID Generation
+
+ULID-based identifier generation:
+
+```typescript
+import { generateId } from 'opencode/id'
+
+const id = generateId()
+// Returns: "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+```
+
+**ULID Format**:
+- 26 characters
+- Timestamp prefix (sortable)
+- Random suffix (collision-resistant)
+- URL-safe characters
+
+**Usage**:
+- Session IDs
+- Message IDs
+- Tool call IDs
+
+---
+
+## Format Utilities
+
+Text formatting utilities:
+
+```typescript
+import { format } from 'opencode/format'
+
+// Truncate long text
+format.truncate(text, 100)
+
+// Format file size
+format.fileSize(1024 * 1024)  // "1 MB"
+
+// Format duration
+format.duration(65000)  // "1m 5s"
+
+// Format timestamp
+format.timestamp(Date.now())  // "2 minutes ago"
+```
+
+---
+
+## Storage Layer
+
+Key-value storage abstraction:
+
+```typescript
+import { storage } from 'opencode/storage'
+
+// Set value
+await storage.set('key', { data: 'value' })
+
+// Get value
+const value = await storage.get('key')
+
+// Delete value
+await storage.delete('key')
+
+// List keys
+const keys = await storage.keys('prefix:*')
+```
+
+**Backends**:
+- File-based (default): `~/.opencode/data/`
+- SQLite (optional): Better for large datasets
+- Memory (testing): Non-persistent
+
+---
+
 ## Best Practices
 
 **Logging**:
@@ -401,3 +524,432 @@ const value2 = await expensiveValue()
 
 For implementation, see `packages/opencode/src/util/`.
 
+
+
+---
+
+# Enhanced UI & Utilities Documentation
+
+---
+
+## TUI Keyboard Shortcuts
+
+### Navigation
+
+| Shortcut | Action |
+|----------|--------|
+| `↑` / `k` | Move up |
+| `↓` / `j` | Move down |
+| `←` / `h` | Move left / collapse |
+| `→` / `l` | Move right / expand |
+| `PgUp` | Page up |
+| `PgDn` | Page down |
+| `Home` | Go to top |
+| `End` | Go to bottom |
+| `Tab` | Next panel |
+| `Shift+Tab` | Previous panel |
+
+### Editing
+
+| Shortcut | Action |
+|----------|--------|
+| `Enter` | Submit message |
+| `Shift+Enter` | New line in message |
+| `Ctrl+C` | Cancel current operation |
+| `Ctrl+D` | Exit OpenCode |
+| `Ctrl+L` | Clear screen |
+| `Ctrl+U` | Clear input line |
+| `Ctrl+W` | Delete word backward |
+| `Ctrl+K` | Delete to end of line |
+
+### Session Management
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+N` | New session |
+| `Ctrl+O` | Open session picker |
+| `Ctrl+S` | Share session |
+| `Ctrl+E` | Export session |
+| `Ctrl+Z` | Undo (restore snapshot) |
+| `Ctrl+Y` | Redo |
+
+### Tool Interaction
+
+| Shortcut | Action |
+|----------|--------|
+| `y` | Approve tool execution |
+| `n` | Deny tool execution |
+| `a` | Always approve this tool |
+| `e` | Edit tool parameters |
+| `?` | Show tool help |
+
+### View Controls
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+\\` | Toggle sidebar |
+| `Ctrl+/` | Toggle help |
+| `Ctrl+P` | Command palette |
+| `F1` | Help |
+| `F2` | Settings |
+| `F3` | Sessions |
+| `F4` | Files |
+
+---
+
+## Desktop Application Features
+
+### Unique Features (vs TUI)
+
+| Feature | Desktop | TUI |
+|---------|---------|-----|
+| File drag & drop | Yes | No |
+| Image preview | Yes | Limited |
+| Clickable links | Yes | Limited |
+| Multiple windows | Yes | No |
+| System tray | Yes | No |
+| Notifications | Native | Terminal |
+| Clipboard images | Yes | No |
+| Themes | Full | ANSI colors |
+
+### SolidJS Architecture
+
+The desktop app uses SolidJS for reactive UI:
+
+```
+packages/desktop/
+├── src/
+│   ├── App.tsx          # Main app component
+│   ├── components/      # UI components
+│   │   ├── Chat.tsx
+│   │   ├── Sidebar.tsx
+│   │   ├── ToolPanel.tsx
+│   │   └── Settings.tsx
+│   ├── stores/          # State management
+│   │   ├── session.ts
+│   │   ├── settings.ts
+│   │   └── theme.ts
+│   └── utils/           # Utilities
+└── electron/            # Electron main process
+```
+
+### Native Integration
+
+- **File System**: Native file dialogs
+- **Clipboard**: System clipboard access
+- **Notifications**: OS notifications
+- **Auto-update**: Electron auto-updater
+- **Menu**: Native application menu
+
+### Settings
+
+```json
+{
+  "desktop": {
+    "theme": "system",  // "light", "dark", "system"
+    "fontSize": 14,
+    "fontFamily": "JetBrains Mono",
+    "minimizeToTray": true,
+    "startMinimized": false,
+    "showNotifications": true
+  }
+}
+```
+
+---
+
+## Server HTTP API
+
+### REST Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/health` | Health check |
+| `GET` | `/api/sessions` | List sessions |
+| `POST` | `/api/sessions` | Create session |
+| `GET` | `/api/sessions/:id` | Get session |
+| `DELETE` | `/api/sessions/:id` | Delete session |
+| `POST` | `/api/sessions/:id/messages` | Send message |
+| `GET` | `/api/sessions/:id/messages` | Get messages |
+| `GET` | `/api/models` | List available models |
+| `GET` | `/api/tools` | List available tools |
+
+### WebSocket Events
+
+Connect to `/ws` for real-time updates:
+
+```typescript
+const ws = new WebSocket('ws://localhost:8080/ws')
+
+ws.onmessage = (event) => {
+  const message = JSON.parse(event.data)
+  switch (message.type) {
+    case 'message':
+      // New message received
+      break
+    case 'tool_call':
+      // Tool execution started
+      break
+    case 'tool_result':
+      // Tool execution completed
+      break
+    case 'stream':
+      // Streaming chunk
+      break
+  }
+}
+```
+
+### Authentication
+
+When `OPENCODE_SERVER_USERNAME` and `OPENCODE_SERVER_PASSWORD` are set:
+
+```bash
+curl -u admin:password http://localhost:8080/api/sessions
+```
+
+Or via header:
+```bash
+curl -H "Authorization: Basic YWRtaW46cGFzc3dvcmQ=" http://localhost:8080/api/sessions
+```
+
+### Rate Limits
+
+Default rate limits (configurable):
+- 100 requests/minute per IP
+- 10 concurrent connections per IP
+- 1MB max request body
+
+---
+
+## File System Operations
+
+### File Watcher
+
+The file watcher monitors project files for changes:
+
+**Watch Events**:
+| Event | Description |
+|-------|-------------|
+| `create` | File created |
+| `modify` | File modified |
+| `delete` | File deleted |
+| `rename` | File renamed |
+
+**Debouncing**:
+- Changes debounced by 100ms default
+- Prevents rapid-fire events during saves
+
+**Ignore Patterns**:
+Default ignores:
+- `node_modules/`
+- `.git/`
+- `dist/`, `build/`
+- `*.log`
+- OS files (`.DS_Store`, `Thumbs.db`)
+
+**Configuration**:
+```json
+{
+  "fileWatcher": {
+    "enabled": true,
+    "debounceMs": 100,
+    "ignore": ["custom-ignore/**"]
+  }
+}
+```
+
+**Performance**:
+- Uses OS-native watching (fsevents, inotify)
+- Scales to large projects (10K+ files)
+- Minimal CPU usage
+
+---
+
+## Utilities & Helpers
+
+### PTY System
+
+Pseudo-terminal handling for bash execution:
+
+**PTY Creation**:
+```typescript
+const pty = createPty({
+  shell: '/bin/bash',
+  cwd: projectPath,
+  env: process.env,
+  cols: 80,
+  rows: 24
+})
+```
+
+**Signal Handling**:
+- `SIGINT` (Ctrl+C) - Interrupt
+- `SIGTERM` - Terminate
+- `SIGKILL` - Force kill
+
+**Buffer Management**:
+- Output buffered up to 100KB
+- Older output discarded when limit reached
+- Configurable via `OPENCODE_EXPERIMENTAL_BASH_MAX_OUTPUT_LENGTH`
+
+### Shell Detection
+
+Detects user's preferred shell:
+
+```typescript
+const shell = detectShell()
+// Returns: 'bash', 'zsh', 'fish', 'pwsh', etc.
+```
+
+**Detection Order**:
+1. `SHELL` environment variable
+2. `/etc/passwd` entry
+3. System default
+
+**Platform Differences**:
+| Platform | Default Shell |
+|----------|---------------|
+| macOS | zsh |
+| Linux | bash |
+| Windows | pwsh / cmd |
+
+### ID Generation
+
+ULID-based identifier generation:
+
+```typescript
+import { generateId } from 'opencode/id'
+
+const id = generateId()
+// Returns: "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+```
+
+**ULID Format**:
+- 26 characters
+- Timestamp prefix (sortable)
+- Random suffix (collision-resistant)
+- URL-safe characters
+
+**Usage**:
+- Session IDs
+- Message IDs
+- Tool call IDs
+
+### Format Utilities
+
+Text formatting utilities:
+
+```typescript
+import { format } from 'opencode/format'
+
+// Truncate long text
+format.truncate(text, 100)
+
+// Format file size
+format.fileSize(1024 * 1024)  // "1 MB"
+
+// Format duration
+format.duration(65000)  // "1m 5s"
+
+// Format timestamp
+format.timestamp(Date.now())  // "2 minutes ago"
+```
+
+### Storage Layer
+
+Key-value storage abstraction:
+
+```typescript
+import { storage } from 'opencode/storage'
+
+// Set value
+await storage.set('key', { data: 'value' })
+
+// Get value
+const value = await storage.get('key')
+
+// Delete value
+await storage.delete('key')
+
+// List keys
+const keys = await storage.keys('prefix:*')
+```
+
+**Backends**:
+- File-based (default): `~/.opencode/data/`
+- SQLite (optional): Better for large datasets
+- Memory (testing): Non-persistent
+
+---
+
+## Logging & Error Handling
+
+### Log Levels
+
+| Level | Description | When to Use |
+|-------|-------------|-------------|
+| `debug` | Detailed debugging | Development |
+| `info` | General information | Normal operation |
+| `warn` | Warning messages | Potential issues |
+| `error` | Error messages | Failures |
+| `fatal` | Critical errors | Unrecoverable |
+
+### Log Format
+
+```
+2026-01-20T12:00:00.000Z [INFO] Session created session=abc123 project=/path
+```
+
+**Fields**:
+- Timestamp (ISO 8601)
+- Level
+- Message
+- Structured key=value pairs
+
+### Error Types
+
+```typescript
+// API errors
+class APIError extends Error {
+  code: number
+  message: string
+}
+
+// Network errors
+class NetworkError extends Error {
+  cause: Error
+}
+
+// Tool errors
+class ToolError extends Error {
+  tool: string
+  parameters: object
+}
+
+// Validation errors
+class ValidationError extends Error {
+  field: string
+  expected: string
+  actual: string
+}
+```
+
+### Error Recovery
+
+| Error Type | Recovery Strategy |
+|------------|-------------------|
+| Network | Retry with backoff |
+| API rate limit | Wait and retry |
+| Tool failure | Report to LLM |
+| Validation | Return helpful message |
+| Unhandled | Log and recover state |
+
+---
+
+## Related Documentation
+
+- [02-cli-reference.md](./02-cli-reference.md) - CLI commands
+- [15-server-architecture.md](./15-server-architecture.md) - Server details
+- [17-tui-implementation.md](./17-tui-implementation.md) - TUI architecture
+- [18-desktop-application.md](./18-desktop-application.md) - Desktop app

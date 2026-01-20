@@ -2,7 +2,7 @@
 
 > **Comprehensive technical documentation for OpenCode - the open-source, provider-agnostic AI coding agent**
 > 
-> **Version**: 0.15.17
+> **Version**: 1.1.26
 
 ---
 
@@ -56,7 +56,7 @@ This documentation provides deep technical insights into OpenCode's architecture
 | Document | Description | Best For |
 |----------|-------------|----------|
 | **[06-tool-system.md](./06-tool-system.md)** | Tool architecture, registry, permissions | Building custom tools |
-| **[07-tool-implementations.md](./07-tool-implementations.md)** | All 14 built-in tools with examples | Using tools effectively |
+| **[07-tool-implementations.md](./07-tool-implementations.md)** | All 20+ built-in tools with examples | Using tools effectively |
 | **08-lsp-integration.md** | Language Server Protocol integration | Code intelligence features |
 
 ### Providers & AI (09-10)
@@ -250,7 +250,7 @@ This documentation provides deep technical insights into OpenCode's architecture
 - Auto-configuration
 
 **Tool System**:
-- 14 built-in tools
+- 20+ built-in tools
 - Custom tool support
 - Plugin architecture
 - Permission control
@@ -271,14 +271,15 @@ This documentation provides deep technical insights into OpenCode's architecture
 - **Diagrams**: 100+
 - **API Endpoints**: 30+
 - **CLI Commands**: 15+
-- **Built-in Tools**: 13
+- **Built-in Tools**: 20+
 - **Protocols**: 2 (ACP, MCP)
+- **Skills System**: Extensible skill discovery
 
 ---
 
 ## 📦 Version Requirements
 
-**OpenCode Version**: 0.15.17
+**OpenCode Version**: 1.1.26
 
 **Runtime Requirements**:
 - **Bun**: 1.3.0 or higher

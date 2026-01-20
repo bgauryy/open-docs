@@ -856,7 +856,7 @@ Show version number.
 
 ```bash
 opencode --version
-# Output: 0.15.17
+# Output: 1.1.26
 ```
 
 ---
