@@ -1,76 +1,75 @@
-# open-docs
+#  open-docs 
+**Powered by [Octocode](https://github.com/bgauryy/octocode-mcp)🐙** 
 
-> Deep-dive documentation for AI CLI tools — the stuff official docs don't cover.
-
-**For developers, researchers, and power users** who need to understand how these tools actually work under the hood. We extract undocumented features, hidden APIs, architecture internals, gotchas, and real implementation patterns directly from source code.
-
-**Why use these docs?** Official docs tell you *what* to do. We show you *how it works*, *what's not documented*, and *what breaks*.
-
-*All content extracted from public open-source repositories — no proprietary info, no secrets, just better organized knowledge.*
-
-## 💡 Motivation
-
-Open source doesn't automatically mean well-documented. While these projects are publicly available, critical details often remain buried in implementation code:
-
-- **Undocumented features** — Experimental APIs, beta functionality, and hidden capabilities not in official docs
-- **Implementation internals** — How things actually work vs. what the public API exposes
-- **System prompts** — The actual instructions sent to LLMs that shape agent behavior
-- **Real-world patterns** — Gotchas, edge cases, and integration nuances learned from source code
-
-This repository started when I tried to understand **how the Task tool works under the hood** across different CLI agents. That single question led to extracting architecture diagrams, security models, tool systems, and undocumented flows that weren't explained anywhere else.
-
-**For developers and agents:** Use this as a reference when building AI workflows, understanding tool implementations, or debugging complex behaviors. These docs bridge the gap between "read the source" and "trust the marketing page."
-
-## 📚 Available Documentation
-
-### 1. Claude Agent SDK
-**[→ Full Documentation](docs/claude-agent-sdk/README.md)**
-
-TypeScript library by Anthropic for building AI agents powered by Claude. 17 built-in tools, MCP integration, security hooks, specialized sub-agents, and flexible permission modes.
-
-### 2. Gemini CLI
-**[→ Full Documentation](docs/gemini-cli/README.md)**
-
-Google's terminal CLI for Gemini AI. 5-package system with 15+ tools, agent-to-agent communication, VS Code integration, and MCP support.
-
-### 3. Codex CLI
-**[→ Full Documentation](docs/codex_cli/README.md)**
-
-OpenAI's Rust-based terminal coding agent. High-performance with advanced tools, security sandboxing, and comprehensive approval policies.
-
-### 4. OpenCode
-**[→ Full Documentation](docs/opencode/README.md)**
-
-Open-source, provider-agnostic AI coding agent built for the terminal. Client/server architecture with built-in LSP, supports multiple AI providers (Anthropic, OpenAI, Google, Bedrock), and features ACP/MCP protocol integration.
+> **The missing manual for AI CLI tools.**  
+> Deep-dive documentation, implementation secrets, and architecture internals extracted directly from source code.
 
 ---
 
-## 🔍 Recommended: Octocode MCP
+**For developers, researchers, and power users** who need to look under the hood. Official documentation tells you *what* a tool does. We show you *how it works*, *what's undocumented*, and *how to build on top of it*.
 
-Smart AI code and GitHub research MCP server for exploring this repository. Provides advanced pattern matching, semantic search, and cross-reference analysis across all documentation.
-
-→ [github.com/bgauryy/octocode-mcp](https://github.com/bgauryy/octocode-mcp) | [Demo](https://www.youtube.com/watch?v=S2pcEjHo6CM)
-
-
-
-https://github.com/user-attachments/assets/825ebe61-4000-47a5-beb8-f241dde41a73
-
-
-
-## 💬 Request Documentation
-
-Know an AI/CLI tool with incomplete docs, hidden features, or complex internals? [Open an issue](https://github.com/bgauryy/open-docs/issues) with the repo URL and what's missing.
-
-**Have specific questions about documented repositories?** Also welcome! Open an issue with your questions about architecture, implementation details, or undocumented behaviors.
-
-## ⭐ Support
-
-Star on GitHub • Share with others • Request documentation for your projects • Sponsorships help maintain this project
-
-## ⚖️ Disclaimer
-
-Research and educational purposes only. Content derived from public open-source resources. Verify all information independently. No warranty provided. Use at your own risk.
+### 💡 Why this exists
+Open source doesn't always mean well-documented. Critical details are often buried in code. We extract:
+- 🛠️ **Internals & Architecture** — How the systems are actually built
+- 🧩 **Undocumented Features** — Hidden APIs, beta functionality, and system prompts
+- ⚠️ **Real-world Gotchas** — Edge cases, security models, and implementation constraints
+- 🔌 **Integration Patterns** — How to properly interface with these agents
 
 ---
 
-**Enterprise Documentation:** Need enterprise-level documentation for your organization's codebase? Reach out: [bgauryy@octocodeai.com](mailto:bgauryy@octocodeai.com)
+## 📖 Documentation Library
+
+### [1. Claude Agent SDK](docs/claude-agent-sdk/README.md)
+> **Anthropic** • *TypeScript* • [GitHub Repo](https://github.com/anthropics/claude-agent-sdk)
+
+The official SDK for building Claude-powered agents.
+- **Key Features**: 17 built-in tools, MCP integration, specialized sub-agents.
+- **Deep Dive**: Security hooks, permission modes, and agent lifecycle management.
+
+### [2. Gemini CLI](docs/gemini-cli/README.md)
+> **Google** • *TypeScript* • [GitHub Repo](https://github.com/google-gemini/gemini-cli)
+
+Google's terminal CLI for Gemini.
+- **Key Features**: Multi-package architecture, agent-to-agent communication, VS Code integration.
+- **Deep Dive**: Tool definitions, runtime environment, and extension points.
+
+### [3. Codex CLI](docs/codex_cli/README.md)
+> **OpenAI** • *Rust* • [GitHub Repo](https://github.com/openai/codex)
+
+High-performance terminal coding agent.
+- **Key Features**: Rust-based performance, advanced sandboxing, security policies.
+- **Deep Dive**: Execution environment, prompt engineering strategies, and state management.
+
+### [4. OpenCode](docs/opencode/README.md)
+> **Community** • *TypeScript* • [GitHub Repo](https://github.com/opencode-ai/opencode)
+
+Provider-agnostic AI coding agent for the terminal.
+- **Key Features**: Supports OpenAI/Anthropic/Google/Bedrock, built-in LSP, Client/Server architecture.
+- **Deep Dive**: ACP/MCP protocol integration, TUI implementation, and provider abstraction layers.
+
+### [5. Pi Coding Agent](docs/coding-agent/README.md)
+> **@mariozechner** • *TypeScript* • [GitHub Repo](https://github.com/badlogic/pi-mono)
+
+Lightweight but powerful CLI coding agent with session management.
+- **Key Features**: Read/Bash/Edit/Write toolset, robust session handling.
+- **Deep Dive**: API reference, data models, and session format specifications.
+
+---
+
+## 🤝 Contribute & Request
+
+**Found an undocumented tool?**  
+[Open an issue](https://github.com/bgauryy/open-docs/issues) with the repo URL. We're always looking for new CLI agents to analyze.
+
+**Questions?**  
+Feel free to open discussions about architecture, specific implementation details, or if you need clarification on any docs.
+
+## ⭐ Support the Project
+If these docs saved you time or helped you build something cool, please consider **starring the repo** to help others find it.
+
+---
+
+### ⚖️ Disclaimer
+*Research and educational purposes only. Content derived from public open-source repositories. Verify all information independently. No warranty provided.*
+
+**Enterprise Support**: Need internal documentation for your own AI agents? Reach out: [bgauryy@octocodeai.com](mailto:bgauryy@octocodeai.com)
