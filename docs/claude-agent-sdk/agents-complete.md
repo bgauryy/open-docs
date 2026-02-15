@@ -57,7 +57,9 @@ Main Conversation
 The SDK uses three different system prompts depending on the execution context:
 
 ### 1. Standard Claude Code Prompt
-**Source:** cli.js:285 (variable `mOA`)  
+
+**Source (v2.1.42):** `@anthropic-ai/claude-code/cli.js` (search: `You are Claude Code, Anthropic's official CLI for Claude.`)
+
 **Usage:** Default for interactive Claude Code CLI sessions
 
 ```
@@ -65,7 +67,9 @@ You are Claude Code, Anthropic's official CLI for Claude.
 ```
 
 ### 2. SDK Mode Prompt
-**Source:** cli.js:285 (variable `Nw9`)  
+
+**Source (v2.1.42):** `@anthropic-ai/claude-code/cli.js` (search: `running within the Claude Agent SDK`)
+
 **Usage:** When running within Claude Agent SDK (non-interactive)
 
 ```
@@ -73,7 +77,9 @@ You are Claude Code, Anthropic's official CLI for Claude, running within the Cla
 ```
 
 ### 3. Agent Mode Prompt
-**Source:** cli.js:285 (variable `dOA`)  
+
+**Source (v2.1.42):** `@anthropic-ai/claude-code/cli.js` (search: `You are a Claude agent, built on Anthropic's Claude Agent SDK.`)
+
 **Usage:** For subagents spawned via the Task tool
 
 ```
@@ -1034,7 +1040,8 @@ Task({
 ### Agent Tool (Task Tool)
 
 **Internal Name:** `Task` (CLI) vs `Agent` (SDK API)
-**Source:** cli.js:212 (variable `Y3="Task"`)
+
+**Source (v2.1.42):** `@anthropic-ai/claude-code/cli.js` (search: `var ZK = 'Task'`)
 
 ### AgentInput Interface
 
@@ -1115,7 +1122,8 @@ yield {type:"result", data:{status:"completed", prompt:A, ...q}}
 
 ### Agent Architect Prompt
 
-**Source:** cli.js:3047 (variable `jw8`)
+**Source (v2.1.42):** `@anthropic-ai/claude-code/cli.js` (search: `You are an elite AI agent architect`)
+
 **Purpose:** Used by Claude to generate new agent definitions
 
 ```javascript
@@ -1201,13 +1209,13 @@ export type ModelUsage = {
 
 | Tool | Constant | Value | Source Line |
 |------|----------|-------|-------------|
-| Grep | `bF` | "Grep" | ~212 |
-| Glob | `ND` | "Glob" | ~212 |
-| Read | `x8` | "Read" | ~212 |
-| Write | `wJ` | "Write" | ~212 |
-| Edit | `R3` | "Edit" | ~212 |
-| Bash | `q4` | "Bash" | ~212 |
-| Task | `Y3` | "Task" | 212 |
+| Grep | `e3` | "Grep" | ~212 |
+| Glob | `PY` | "Glob" | ~212 |
+| Read | `_q` | "Read" | ~212 |
+| Write | `G5` | "Write" | ~212 |
+| Edit | `bq` | "Edit" | ~212 |
+| Bash | `I4` | "Bash" | ~212 |
+| Task | `ZK` | "Task" | 212 |
 
 ---
 

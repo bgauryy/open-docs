@@ -23,7 +23,7 @@ Open source doesn't always mean well-documented. Critical details are often buri
 > **Anthropic** • *TypeScript* • [GitHub Repo](https://github.com/anthropics/claude-agent-sdk)
 
 The official SDK for building Claude-powered agents.
-- **Key Features**: 17 built-in tools, MCP integration, specialized sub-agents.
+- **Key Features**: Built-in tool system, MCP integration, specialized sub-agents.
 - **Deep Dive**: Security hooks, permission modes, and agent lifecycle management.
 
 ### [2. Gemini CLI](docs/gemini-cli/README.md)

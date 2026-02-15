@@ -1138,10 +1138,10 @@ const INTERNAL_LIMITS = {
   BASH_OUTPUT_MAX: 30000,          // Characters
   BASH_TIMEOUT_DEFAULT: 120000,    // 2 minutes
   BASH_TIMEOUT_MAX: 600000,        // 10 minutes
-  PDF_MAX_SIZE: 33554432,          // 32MB
-  
+  PDF_MAX_SIZE: 20971520,          // 20MB (tj1)
+
   // Hook Limits
-  HOOK_TIMEOUT: 5000,              // 5 seconds
+  HOOK_TIMEOUT: 15000,             // 15 seconds
   
   // Thinking Limits
   ULTRATHINK_MAX: 31999,           // Max thinking tokens

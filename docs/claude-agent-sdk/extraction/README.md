@@ -44,7 +44,7 @@ This directory contains comprehensive extraction documentation for the Claude Ag
 #### 2. [Hooks System Complete](./hooks-system-complete.md)
 
 **What's Inside**:
-- **All 9 Hook Events**: PreToolUse, PostToolUse, Notification, UserPromptSubmit, SessionStart, SessionEnd, Stop, SubagentStop, PreCompact
+- **All 15 Hook Events**: PreToolUse, PostToolUse, PostToolUseFailure, Notification, UserPromptSubmit, SessionStart, SessionEnd, Stop, SubagentStart, SubagentStop, PreCompact, PermissionRequest, Setup, TeammateIdle, TaskCompleted
 - Hook input/output structures for each event
 - Hook execution lifecycle
 - Permission override mechanism
@@ -65,12 +65,13 @@ This directory contains comprehensive extraction documentation for the Claude Ag
 #### 3. [Agents & Subagents Complete](./agents-subagents-complete.md)
 
 **What's Inside**:
-- **All 5 Built-in Agents**:
+- **All 6 Built-in Agents**:
+  - Bash (Command execution specialist)
   - Explore (Haiku, isolated, 70-84% token savings)
   - general-purpose (Sonnet, forked, full tools)
   - statusline-setup (Sonnet, isolated, config only)
-  - output-style-setup (Sonnet, isolated, style creation)
-  - security-review (Sonnet, isolated, git-restricted)
+  - Plan (Implementation planning agent)
+  - claude-code-guide (Documentation query agent)
 - Agent definition structure (complete TypeScript schema)
 - Context management (forked vs isolated)
 - Agent color system (8 colors, deterministic)
@@ -92,7 +93,7 @@ This directory contains comprehensive extraction documentation for the Claude Ag
 #### 4. [Permissions System Complete](./permissions-system-complete.md)
 
 **What's Inside**:
-- **4 Permission Modes**: default, acceptEdits, bypassPermissions, plan
+- **6 Permission Modes**: default, acceptEdits, bypassPermissions, plan, delegate, dontAsk
 - **6-Level Resolution**: Session → Local → Project → User → Policy → Mode
 - Permission rules (structure, matching, patterns)
 - Permission updates (6 types)
@@ -174,7 +175,7 @@ This directory contains comprehensive extraction documentation for the Claude Ag
 
 - MCP Integration Complete
 - Architecture Overview Complete
-- Tool System Complete (all 17 tools)
+- Tool System Complete (all 30 tools)
 - Type System Complete
 - CLI Bundle Analysis
 
@@ -325,7 +326,7 @@ This directory contains comprehensive extraction documentation for the Claude Ag
 Remaining documents to create:
 1. MCP Integration Complete
 2. Architecture Overview Complete
-3. Tool System Complete (all 17 tools)
+3. Tool System Complete (all 30 tools)
 4. Type System Complete
 5. CLI Bundle Analysis
 

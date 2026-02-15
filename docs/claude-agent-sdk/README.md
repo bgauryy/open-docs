@@ -9,7 +9,7 @@ The Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`) is a TypeScript library 
 **Note**: This is an in-depth technical analysis. For official documentation, visit: https://docs.claude.com/en/api/agent-sdk/overview
 
 **What makes it special?**
-- 17 built-in tools for file operations, commands, web search, and more
+- 30 built-in tools for file operations, commands, web search, and more
 - Add your own tools via Model Context Protocol (MCP)
 - Specialized sub-agents for complex workflows
 - Security hooks to control every action
@@ -31,7 +31,7 @@ The Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`) is a TypeScript library 
 
 | Document | What You'll Find |
 |----------|-----------------|
-| **[Tool System](./tools-complete.md)** | Complete reference for all 17 built-in tools |
+| **[Tool System](./tools-complete.md)** | Complete reference for all 30 built-in tools |
 | **[Hooks & Permissions](./hooks-permissions-complete.md)** | Security, control flow, and permission management |
 | **[Agent System](./agents-complete.md)** | Creating specialized sub-agents for complex tasks |
 | **[Memory & Context](./memory-and-context.md)** | Session management, context persistence, and memory best practices |
@@ -57,6 +57,8 @@ The Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`) is a TypeScript library 
 | **[SDK Implementation Analysis](./implementaion-analysis.md)** | Process architecture and communication patterns |
 | **[Skills System](./skills-documentaion.md)** | Claude Code's skill definition and execution |
 | **[Internal Flows](./internal-flows.md)** | How tools work internally |
+| **[LSP Integration](./lsp.md)** | Language Server Protocol integration and the `LSP` tool |
+| **[ToolSearch](./toolsearch.md)** | Deferred tool discovery and selection (`ToolSearch`) |
 
 ---
 
@@ -65,7 +67,7 @@ The Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`) is a TypeScript library 
 **I want to...**
 
 - **Get started quickly** → [Comprehensive Guide](./comprehensive-guide.md)
-- **Understand the 17 tools** → [Tool System](./tools-complete.md)
+- **Understand the 30 tools** → [Tool System](./tools-complete.md)
 - **Build secure agents** → [Hooks & Permissions](./hooks-permissions-complete.md)
 - **Create sub-agents** → [Agent System](./agents-complete.md)
 - **Manage memory & sessions** → [Memory & Context](./memory-and-context.md)
@@ -92,7 +94,7 @@ See [Comprehensive Guide](./comprehensive-guide.md) for detailed examples.
 ## 🔑 Key Concepts
 
 ### The Tool System
-17 built-in tools organized into categories:
+30 built-in tools organized into categories:
 - **File Operations**: Read, write, edit files and notebooks
 - **Discovery**: Search files by name or content
 - **Execution**: Run commands and scripts
@@ -104,8 +106,8 @@ See [Comprehensive Guide](./comprehensive-guide.md) for detailed examples.
 
 ### Security & Control
 Control agent behavior through:
-- **9 Hook Events**: Intercept and modify every action
-- **4 Permission Modes**: From manual approval to full automation
+- **15 Hook Events**: Intercept and modify every action
+- **6 Permission Modes**: From manual approval to full automation
 - **Runtime Control**: Change behavior mid-execution
 - **Tool Whitelisting**: Restrict agent capabilities
 

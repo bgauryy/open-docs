@@ -1,9 +1,9 @@
-# Claude CLI Plugin System - Complete Reference
+# Claude Code Plugin System - Complete Reference
 
 **Extracted from Source Code Analysis**
 
-Version: 2.0.22  
-Last Updated: October 24, 2025
+Version: 2.1.42  
+Last Updated: February 15, 2026
 
 ---
 
@@ -26,31 +26,31 @@ Last Updated: October 24, 2025
 
 ### What is the Plugin System?
 
-The Claude CLI includes a **marketplace-based plugin system** for extending functionality through installable plugins. This is a CLI-only feature - plugins are installed and managed via `claude plugin` and `claude marketplace` commands.
+Claude Code includes a **marketplace-based plugin system** for extending the CLI through installable plugins. This is a CLI-only feature - plugins are installed and managed via `claude plugin` and `claude plugin marketplace` commands.
 
 ### Key Facts
 
-- **9 Commands Total**: 5 plugin commands + 4 marketplace commands
-- **Plugin Storage**: `~/.claude/plugins/` directory
+- **11 Commands Total**: 7 plugin commands + 4 marketplace commands
+- **Plugin Cache Directory**: `~/.claude/plugins/` (or `~/.claude/cowork_plugins/` in cowork mode; override with `CLAUDE_CODE_PLUGIN_CACHE_DIR`)
 - **Marketplace Support**: GitHub repos, Git URLs, HTTP URLs, local directories/files
-- **Manifest Validation**: Built-in validator (`pt1` function)
+- **Manifest Validation**: `claude plugin validate <path>` validates plugin and marketplace manifests
 - **Telemetry**: All commands send usage analytics (if enabled)
-- **Exit Codes**: 0 (success), 1 (error), 2 (validation error)
+- **Exit Codes (validate)**: 0 (success), 1 (validation failed), 2 (unexpected error)
 
 ### Quick Start
 
 ```bash
 # Add a marketplace
-claude marketplace add anthropics/claude-plugins
+claude plugin marketplace add owner/repo
 
 # Install a plugin
-claude plugin install prettier-formatter
+claude plugin install my-plugin@my-marketplace
 
-# List installed plugins (check config)
-cat ~/.claude/config.json
+# List installed plugins
+claude plugin list
 
 # Validate a plugin manifest
-claude plugin validate ./my-plugin/plugin.json
+claude plugin validate ./my-plugin
 ```
 
 ### Important Distinction
@@ -60,10 +60,10 @@ There is **NO SDK-level plugin system** for programmatic use. The plugin system 
 | Feature | CLI Plugin System |
 |---------|------------------|
 | **Type** | Manifest-based (JSON files) |
-| **Commands** | `claude plugin ...`, `claude marketplace ...` |
+| **Commands** | `claude plugin ...`, `claude plugin marketplace ...` |
 | **Discovery** | Marketplaces |
 | **Installation** | `plugin install` command |
-| **Configuration** | `~/.claude/plugins/`, `~/.claude/config.json` |
+| **Configuration** | `~/.claude/settings.json` (plus plugin cache under `~/.claude/plugins/`) |
 | **Use Case** | CLI tool extensions |
 
 ---
@@ -74,36 +74,34 @@ There is **NO SDK-level plugin system** for programmatic use. The plugin system 
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Claude CLI (cli.js)                       │
+│                    Claude Code CLI                           │
 │  ┌───────────────────────────────────────────────────────┐  │
 │  │            Command Parser & Router                     │  │
-│  │  - plugin install/uninstall/enable/disable/validate   │  │
-│  │  - marketplace add/list/remove/update                  │  │
+│  │  - plugin install/uninstall/list/enable/disable/update │  │
+│  │  - plugin validate                                     │  │
+│  │  - plugin marketplace add/list/remove/update            │  │
 │  └────────────────────┬──────────────────────────────────┘  │
 │                       │                                       │
 │  ┌────────────────────▼──────────────────────────────────┐  │
 │  │         Core Functions                                 │  │
-│  │  • pt1()  - Manifest validation                        │  │
-│  │  • dt1()  - Source format parsing                      │  │
-│  │  • _SQ()  - Plugin install                             │  │
-│  │  • kSQ()  - Plugin uninstall                           │  │
-│  │  • xSQ()  - Plugin enable                              │  │
-│  │  • vSQ()  - Plugin disable                             │  │
-│  │  • Ii()   - Marketplace add                            │  │
-│  │  • pY()   - Marketplace list                           │  │
-│  │  • vg1()  - Marketplace remove                         │  │
-│  │  • bg1()  - Marketplace update (single)                │  │
-│  │  • q5B()  - Marketplace update (all)                   │  │
+│  │  • pluginValidateHandler()                             │  │
+│  │  • pluginListHandler()                                 │  │
+│  │  • pluginInstallHandler()                              │  │
+│  │  • pluginUninstallHandler()                            │  │
+│  │  • pluginEnableHandler()                               │  │
+│  │  • pluginDisableHandler()                              │  │
+│  │  • pluginUpdateHandler()                               │  │
+│  │  • marketplaceAddHandler()                             │  │
+│  │  • marketplaceListHandler()                            │  │
+│  │  • marketplaceRemoveHandler()                          │  │
+│  │  • marketplaceUpdateHandler()                          │  │
 │  └────────────────────┬──────────────────────────────────┘  │
 │                       │                                       │
 │  ┌────────────────────▼──────────────────────────────────┐  │
 │  │      Configuration & State Management                  │  │
-│  │  • v4()  - Read local config                           │  │
-│  │  • q0()  - Read user config                            │  │
-│  │  • LG()  - Write local config                          │  │
-│  │  • VF()  - Update marketplace cache                    │  │
-│  │  • Q()   - Error handler                               │  │
-│  │  • Z1()  - Telemetry reporter                          │  │
+│  │  • settings.json (enabledPlugins, plugin config)        │  │
+│  │  • known_marketplaces.json (marketplace list)           │  │
+│  │  • installed_plugins.json (installed plugin state)      │  │
 │  └────────────────────┬──────────────────────────────────┘  │
 └────────────────────────┼──────────────────────────────────────┘
                          │
@@ -114,9 +112,11 @@ There is **NO SDK-level plugin system** for programmatic use. The plugin system 
 │  File System     │           │   Remote Sources │
 │  ~~~~~~~~~~~~~~~~ │           │  ~~~~~~~~~~~~~~~ │
 │  ~/.claude/      │           │  • GitHub repos  │
-│    ├─ config.json│           │  • Git URLs      │
-│    ├─ plugins/   │           │  • HTTP URLs     │
-│    └─ marketplaces.json      │  • Local paths   │
+│    ├─ settings.json          │  • Git URLs      │
+│    ├─ plugins/               │  • HTTP URLs     │
+│    │   ├─ known_marketplaces.json
+│    │   └─ installed_plugins.json
+│    └─ ...                    │  • Local paths   │
 └──────────────────┘           └──────────────────┘
 ```
 
@@ -127,19 +127,19 @@ User runs: claude plugin install my-plugin
            │
            ▼
 ┌──────────────────────────────┐
-│ 1. Parse Plugin Identifier   │ → Splits "plugin@marketplace@version"
+│ 1. Parse Plugin Identifier   │ → Parses "plugin@marketplace"
 └──────────┬───────────────────┘
            │
            ▼
 ┌──────────────────────────────┐
 │ 2. Resolve Marketplace        │ → Searches configured marketplaces
-│    (pY() - list all)          │   for plugin definition
+│    (known marketplaces)       │   for plugin definition
 └──────────┬───────────────────┘
            │
            ▼
 ┌──────────────────────────────┐
-│ 3. Check Installation Status  │ → Reads ~/.claude/config.json
-│    (v4() - read config)       │   Checks enabledPlugins array
+│ 3. Check Installation Status  │ → Reads merged settings + installed state
+│                               │   Checks enabledPlugins and installed_plugins.json
 └──────────┬───────────────────┘
            │
            ▼
@@ -150,8 +150,8 @@ User runs: claude plugin install my-plugin
            │
            ▼
 ┌──────────────────────────────┐
-│ 5. Validate Manifest          │ → pt1() validation function
-│    (pt1 function)             │   Checks required fields, formats
+│ 5. Validate Manifest          │ → Validates plugin/marketplace manifest schema
+│                               │   Checks required fields and formats
 └──────────┬───────────────────┘
            │
            ▼
@@ -163,7 +163,7 @@ User runs: claude plugin install my-plugin
            ▼
 ┌──────────────────────────────┐
 │ 7. Download Plugin Files      │ → Downloads plugin archive
-│                               │   Extracts to ~/.claude/plugins/
+│                               │   Caches under ~/.claude/plugins/ (versioned cache)
 └──────────┬───────────────────┘
            │
            ▼
@@ -174,14 +174,14 @@ User runs: claude plugin install my-plugin
            │
            ▼
 ┌──────────────────────────────┐
-│ 9. Update Configuration       │ → LG() writes to config.json
-│    (LG function)              │   Adds to enabledPlugins array
+│ 9. Update Configuration       │ → Updates enabledPlugins in settings.json
+│                               │   (scope: user/project/local)
 └──────────┬───────────────────┘
            │
            ▼
 ┌──────────────────────────────┐
-│ 10. Send Telemetry            │ → Z1("tengu_plugin_install_command")
-│     (Z1 function)             │   Reports usage analytics
+│ 10. Send Telemetry            │ → "tengu_plugin_install_command"
+│                               │   Reports usage analytics
 └──────────┬───────────────────┘
            │
            ▼
@@ -207,8 +207,8 @@ User runs: claude plugin install my-plugin
          │ claude plugin enable <plugin>
          ▼
 ┌──────────────────┐
-│     Enabled      │  Listed in enabledPlugins array
-│  (in config)     │  Not active until session restart
+│     Enabled      │  `enabledPlugins[plugin@marketplace] = true` in settings
+│  (in settings)   │  Not active until session restart
 └────────┬─────────┘
          │
          │ Session restart / CLI init
@@ -221,15 +221,15 @@ User runs: claude plugin install my-plugin
          │ claude plugin disable <plugin>
          ▼
 ┌──────────────────┐
-│    Disabled      │  Listed in disabledPlugins array
-│  (in config)     │  Files remain on disk
+│    Disabled      │  `enabledPlugins[plugin@marketplace] = false` in settings
+│  (in settings)   │  Files remain on disk (cache)
 └────────┬─────────┘
          │
          │ claude plugin uninstall <plugin>
          ▼
 ┌──────────────────┐
 │    Uninstalled   │  Files deleted from disk
-│   (removed)      │  Removed from all config arrays
+│   (removed)      │  Removed from settings and installed state
 └──────────────────┘
 ```
 
@@ -237,29 +237,17 @@ User runs: claude plugin install my-plugin
 
 ```
 ~/.claude/
-├── config.json              # Main configuration
-│   ├── enabledPlugins: []   # Active plugins
-│   ├── disabledPlugins: []  # Inactive plugins
-│   ├── installMethod        # Installation method
-│   └── telemetryEnabled     # Telemetry setting
-│
-├── marketplaces.json        # Marketplace definitions
-│   └── {name}: {            # Per-marketplace config
-│         name, source,      #   Metadata
-│         plugins[]          #   Available plugins
+├── settings.json                 # Main settings (including enabledPlugins)
+│   └── enabledPlugins: {         # Plugin enablement (plugin@marketplace → true/false)
+│         "my-plugin@my-market": true
 │       }
 │
-└── plugins/                 # Plugin storage directory
-    ├── plugin-one/
-    │   ├── plugin.json      # Plugin manifest
-    │   ├── scripts/
-    │   │   ├── activate.sh  # Activation script (optional)
-    │   │   └── deactivate.sh# Deactivation script (optional)
-    │   └── ... (plugin files)
-    │
-    └── plugin-two/
-        ├── plugin.json
-        └── ...
+└── plugins/                      # Plugin cache directory (or cowork_plugins/)
+    ├── known_marketplaces.json   # Configured marketplaces (sources + metadata)
+    ├── installed_plugins.json    # Installed plugins state (derived/synced)
+    ├── marketplaces/             # Downloaded marketplace manifests
+    ├── cache/                    # Versioned plugin cache copies
+    └── npm-cache/                # Optional npm cache for marketplace sources
 ```
 
 ---
@@ -300,22 +288,22 @@ claude plugin install my-plugin@marketplace-name@1.2.3
 claude plugin i <plugin>
 ```
 
-**Implementation**: `_SQ(pluginName)` function
+**Implementation**: `pluginInstallHandler`
 
 **Internal Flow**:
 ```
-1. Parse plugin identifier (name, marketplace, version)
-2. Load marketplace list with pY()
+1. Parse plugin identifier (plugin + marketplace)
+2. Load configured marketplaces (including cached marketplaces and repo-provided entries)
 3. Search marketplaces for plugin match
-4. Validate not already installed (check config.json)
+4. Validate not already installed (check `installed_plugins.json`)
 5. Fetch plugin manifest from source
-6. Validate manifest with pt1(path)
+6. Validate manifest schema
 7. Check dependency conflicts
 8. Download plugin archive
-9. Extract to ~/.claude/plugins/<name>/
+9. Cache/extract under `~/.claude/plugins/` (versioned cache)
 10. Run activation script (if present)
-11. Update config with LG()
-12. Add to enabledPlugins array
+11. Update settings (scope-specific `settings.json`)
+12. Update `enabledPlugins` mapping
 13. Send telemetry: tengu_plugin_install_command
 ```
 
@@ -372,7 +360,7 @@ claude plugin remove <plugin>
 claude plugin rm <plugin>
 ```
 
-**Implementation**: `kSQ(pluginName)` function
+**Implementation**: `pluginUninstallHandler`
 
 **Internal Flow**:
 ```
@@ -381,8 +369,8 @@ claude plugin rm <plugin>
 3. If enabled: Run deactivation script (if present)
 4. Remove plugin directory
 5. Clean up unused dependencies (if not used by others)
-6. Update config with LG()
-7. Remove from enabledPlugins/disabledPlugins arrays
+6. Update settings (scope-specific `settings.json`)
+7. Update `enabledPlugins` mapping
 8. Send telemetry: tengu_plugin_uninstall_command
 ```
 
@@ -428,16 +416,15 @@ claude plugin enable <plugin>
 **Arguments**:
 - `<plugin>` - Plugin name (required)
 
-**Implementation**: `xSQ(pluginName)` function
+**Implementation**: `pluginEnableHandler`
 
 **Internal Flow**:
 ```
 1. Check if plugin is installed (~/.claude/plugins/)
 2. Check if plugin is already enabled
 3. Run activation script (if present)
-4. Update config with LG():
-   - Remove from disabledPlugins array
-   - Add to enabledPlugins array
+4. Update settings (scope-specific `settings.json`):
+   - Set `enabledPlugins[plugin@marketplace] = true`
 5. Send telemetry: tengu_plugin_enable_command
 6. Plugin will be active in NEXT session (not immediate)
 ```
@@ -482,16 +469,15 @@ claude plugin disable <plugin>
 **Arguments**:
 - `<plugin>` - Plugin name (required)
 
-**Implementation**: `vSQ(pluginName)` function
+**Implementation**: `pluginDisableHandler`
 
 **Internal Flow**:
 ```
 1. Check if plugin is installed
 2. Check if plugin is currently enabled
 3. Run deactivation script (if present)
-4. Update config with LG():
-   - Remove from enabledPlugins array
-   - Add to disabledPlugins array
+4. Update settings (scope-specific `settings.json`):
+   - Set `enabledPlugins[plugin@marketplace] = false`
 5. Send telemetry: tengu_plugin_disable_command
 6. Plugin will be inactive in NEXT session
 ```
@@ -595,10 +581,10 @@ Validating plugin manifest: /path/to/plugin.json
 **Example Usage**:
 ```bash
 # Validate plugin manifest
-claude plugin validate ./my-plugin/plugin.json
+claude plugin validate ./my-plugin
 
 # Validate marketplace manifest
-claude plugin validate ./my-marketplace/marketplace.json
+claude plugin validate ./my-marketplace
 ```
 
 **Common Validation Errors**:
@@ -618,15 +604,56 @@ claude plugin validate ./my-marketplace/marketplace.json
 
 ---
 
+#### 6. `claude plugin list`
+
+**Purpose**: List installed plugins (and optionally available plugins from marketplaces)
+
+**Syntax**:
+```bash
+claude plugin list [options]
+```
+
+**Options**:
+- `--json` - Output machine-readable JSON
+- `--available` - Include available plugins from marketplaces (requires `--json`)
+
+**Examples**:
+```bash
+# Human-readable list
+claude plugin list
+
+# JSON output
+claude plugin list --json
+
+# Include available plugins from configured marketplaces
+claude plugin list --json --available
+```
+
+---
+
+#### 7. `claude plugin update <plugin>`
+
+**Purpose**: Update an installed plugin to the latest version (restart required to apply)
+
+**Syntax**:
+```bash
+claude plugin update <plugin> [options]
+```
+
+**Options**:
+- `-s, --scope <scope>` - Installation scope: user, project, or local (default: user)
+
+---
+
 ### Marketplace Commands
 
-#### 6. `claude marketplace add <source>`
+#### 8. `claude plugin marketplace add <source>`
 
 **Purpose**: Add a plugin marketplace from various sources
 
 **Syntax**:
 ```bash
-claude marketplace add <source> [options]
+claude plugin marketplace add <source> [options]
 ```
 
 **Arguments**:
@@ -636,27 +663,27 @@ claude marketplace add <source> [options]
 
 1. **GitHub Repository** (owner/repo):
 ```bash
-claude marketplace add anthropics/claude-plugins
+claude plugin marketplace add anthropics/claude-plugins
 ```
 
 2. **Direct URL**:
 ```bash
-claude marketplace add https://example.com/marketplace.json
+claude plugin marketplace add https://example.com/marketplace.json
 ```
 
 3. **Local Directory**:
 ```bash
-claude marketplace add ./local-marketplace
+claude plugin marketplace add ./local-marketplace
 ```
 
 4. **Local File**:
 ```bash
-claude marketplace add /path/to/marketplace.json
+claude plugin marketplace add /path/to/marketplace.json
 ```
 
 5. **Git URL**:
 ```bash
-claude marketplace add git://github.com/org/repo.git
+claude plugin marketplace add git://github.com/org/repo.git
 ```
 
 **Implementation**: `Ii(source, progressCallback)` function
@@ -692,7 +719,7 @@ return null; // Invalid format
 4. Validate manifest with pt1(path)
 5. Store marketplace configuration
 6. Update cache with VF()
-7. Add to ~/.claude/marketplaces.json
+7. Add to `~/.claude/plugins/known_marketplaces.json` (or `~/.claude/cowork_plugins/known_marketplaces.json`)
 8. Send telemetry: tengu_marketplace_added
 ```
 
@@ -724,33 +751,33 @@ Adding marketplace...
 **Example Usage**:
 ```bash
 # Add official marketplace
-claude marketplace add anthropics/claude-plugins
+claude plugin marketplace add anthropics/claude-plugins
 
 # Add from URL
-claude marketplace add https://plugins.mycompany.com/marketplace.json
+claude plugin marketplace add https://plugins.mycompany.com/marketplace.json
 
 # Add local development marketplace
-claude marketplace add ~/my-plugins
+claude plugin marketplace add ~/my-plugins
 ```
 
 ---
 
-#### 7. `claude marketplace list`
+#### 9. `claude plugin marketplace list`
 
 **Purpose**: List all configured marketplaces
 
 **Syntax**:
 ```bash
-claude marketplace list
+claude plugin marketplace list
 ```
 
 **Arguments**: None
 
-**Implementation**: `pY()` function - Returns marketplace map
+**Implementation**: `marketplaceListHandler`
 
 **Internal Flow**:
 ```
-1. Read ~/.claude/marketplaces.json
+1. Read `~/.claude/plugins/known_marketplaces.json` (or cowork_plugins)
 2. Load marketplace metadata
 3. Format output with source details
 ```
@@ -782,18 +809,18 @@ No marketplaces configured
 **Example Usage**:
 ```bash
 # List all marketplaces
-claude marketplace list
+claude plugin marketplace list
 ```
 
 ---
 
-#### 8. `claude marketplace remove <name>`
+#### 10. `claude plugin marketplace remove <name>`
 
 **Purpose**: Remove a configured marketplace
 
 **Syntax**:
 ```bash
-claude marketplace remove <name>
+claude plugin marketplace remove <name>
 ```
 
 **Arguments**:
@@ -801,17 +828,17 @@ claude marketplace remove <name>
 
 **Aliases**:
 ```bash
-claude marketplace rm <name>
+claude plugin marketplace rm <name>
 ```
 
-**Implementation**: `vg1(name)` function
+**Implementation**: `marketplaceRemoveHandler`
 
 **Internal Flow**:
 ```
-1. Check if marketplace exists in marketplaces.json
+1. Check if marketplace exists in `known_marketplaces.json`
 2. Remove marketplace configuration
 3. Update cache with VF()
-4. Update ~/.claude/marketplaces.json
+4. Update `~/.claude/plugins/known_marketplaces.json` (or cowork_plugins)
 5. Send telemetry: tengu_marketplace_removed
 6. NOTE: Does NOT uninstall plugins from marketplace
 ```
@@ -842,21 +869,21 @@ claude marketplace rm <name>
 **Example Usage**:
 ```bash
 # Remove marketplace
-claude marketplace remove old-marketplace
+claude plugin marketplace remove old-marketplace
 
 # Using alias
-claude marketplace rm test-marketplace
+claude plugin marketplace rm test-marketplace
 ```
 
 ---
 
-#### 9. `claude marketplace update [name]`
+#### 11. `claude plugin marketplace update [name]`
 
 **Purpose**: Update marketplace(s) from their source
 
 **Syntax**:
 ```bash
-claude marketplace update [name]
+claude plugin marketplace update [name]
 ```
 
 **Arguments**:
@@ -916,10 +943,10 @@ Updating 3 marketplace(s)...
 **Example Usage**:
 ```bash
 # Update specific marketplace
-claude marketplace update official
+claude plugin marketplace update official
 
 # Update all marketplaces
-claude marketplace update
+claude plugin marketplace update
 ```
 
 ---
@@ -1001,7 +1028,7 @@ Marketplace Operation Complete
 ┌──────────────────────────────┐
 │ VF() - Update Cache          │
 ├──────────────────────────────┤
-│ 1. Read marketplaces.json    │
+│ 1. Read known_marketplaces.json │
 │ 2. Update timestamp          │
 │ 3. Rebuild plugin index      │
 │ 4. Write back to disk        │
@@ -1012,9 +1039,9 @@ Marketplace Operation Complete
 ```
 
 **Called After**:
-- `marketplace add`
-- `marketplace remove`
-- `marketplace update`
+- `plugin marketplace add`
+- `plugin marketplace remove`
+- `plugin marketplace update`
 
 **NOT Called After**:
 - Plugin operations (plugins don't cache)
@@ -1029,7 +1056,7 @@ Error Occurs
 │ Q(error, action)               │
 │ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~   │
 │ Centralized error handler      │
-│ Line 3725 in cli.js            │
+│ Search: function Q(W, J)       │
 └────────┬───────────────────────┘
          │
          ├─ 1. Log error to telemetry
@@ -1068,49 +1095,26 @@ function Q(W, J) {
 
 ```
 ~/.claude/
-├── config.json                  # Main configuration file
+├── settings.json                 # Main settings (user scope)
 │   └── Contains:
-│       • enabledPlugins: string[]
-│       • disabledPlugins: string[]
-│       • installMethod: string
-│       • telemetryEnabled: boolean
-│       • enabledMcpjsonServers: string[]
-│       • disabledMcpjsonServers: string[]
+│       • enabledPlugins: Record<string, boolean>
+│       • extraKnownMarketplaces: Record<string, MarketplaceDefinition> (optional)
+│       • telemetryEnabled: boolean (if supported by your build)
 │
-├── marketplaces.json            # Marketplace definitions
-│   └── Contains:
-│       {
-│         "[marketplace-name]": {
-│           name: string,
-│           version: string,
-│           description: string,
-│           source: SourceDefinition,
-│           plugins: PluginDefinition[]
-│         }
-│       }
-│
-└── plugins/                     # Plugin installation directory
-    │
-    ├── [plugin-name]/          # One directory per plugin
-    │   ├── plugin.json         # REQUIRED: Plugin manifest
-    │   ├── scripts/            # OPTIONAL: Lifecycle scripts
-    │   │   ├── activate.sh
-    │   │   ├── activate.js
-    │   │   ├── deactivate.sh
-    │   │   └── deactivate.js
-    │   ├── src/                # Plugin source code
-    │   ├── lib/                # Compiled/bundled code
-    │   └── ...                 # Additional plugin files
-    │
-    └── [another-plugin]/
-        └── ...
+└── plugins/                      # Plugin cache directory (or cowork_plugins/)
+    └── Contains:
+        • known_marketplaces.json    # Configured marketplaces (sources + metadata)
+        • installed_plugins.json     # Installed plugins state
+        • marketplaces/              # Downloaded marketplace manifests
+        • cache/                     # Versioned plugin cache copies
+        • npm-cache/                 # Optional npm cache for marketplace sources
 ```
 
-### Plugin Manifest (`plugin.json`)
+### Plugin Manifest (`.claude-plugin/plugin.json`)
 
-**Location**: `~/.claude/plugins/[plugin-name]/plugin.json`
+**Location**: `<plugin-root>/.claude-plugin/plugin.json` (installed plugins are cached under `~/.claude/plugins/` or `~/.claude/cowork_plugins/`)
 
-**Complete Schema**:
+**Common Fields (not exhaustive)**:
 ```json
 {
   "name": "string",              // REQUIRED: Plugin identifier
@@ -1145,6 +1149,8 @@ function Q(W, J) {
     "network": ["https://api.example.com"],
     "environment": ["API_KEY", "DATABASE_URL"]
   },
+
+  "lspServers": {},              // OPTIONAL: LSP server configs (see lsp.md)
   
   "config": {                    // OPTIONAL: Plugin-specific config
     "key": "value"
@@ -1255,39 +1261,34 @@ function Q(W, J) {
 }
 ```
 
-### User Configuration (`~/.claude/config.json`)
+### Settings (`~/.claude/settings.json`)
 
-**Complete Schema**:
+**Common Fields (not exhaustive)**:
 ```json
 {
-  "installMethod": "local",
-  
-  "enabledPlugins": [
-    "prettier-formatter",
-    "eslint-checker"
-  ],
-  
-  "disabledPlugins": [
-    "old-formatter"
-  ],
-  
-  "enabledMcpjsonServers": [],
-  "disabledMcpjsonServers": [],
-  "enableAllProjectMcpServers": false,
-  
-  "autoUpdate": false,
-  "updateChannel": "stable",
-  "telemetryEnabled": true,
-  
+  "enabledPlugins": {
+    "prettier-formatter@my-marketplace": true,
+    "eslint-checker@my-marketplace": true,
+    "old-formatter@my-marketplace": false
+  },
+
+  "extraKnownMarketplaces": {
+    "my-marketplace": {
+      "source": { "type": "github", "repo": "owner/repo" }
+    }
+  },
+
   "pluginConfig": {
-    "prettier-formatter": {
+    "prettier-formatter@my-marketplace": {
       "tabWidth": 2,
       "semi": true
     },
-    "eslint-checker": {
+    "eslint-checker@my-marketplace": {
       "autoFix": false
     }
-  }
+  },
+
+  "telemetryEnabled": true
 }
 ```
 
@@ -1453,20 +1454,19 @@ interface ValidationResult {
 }
 ```
 
-#### User Configuration
+#### Settings
 
 ```typescript
-interface UserConfig {
-    installMethod: string;
-    enabledPlugins: string[];
-    disabledPlugins: string[];
-    enabledMcpjsonServers: string[];
-    disabledMcpjsonServers: string[];
-    enableAllProjectMcpServers: boolean;
-    autoUpdate?: boolean;
-    updateChannel?: "stable" | "latest";
+interface Settings {
+    enabledPlugins?: Record<string, boolean>; // plugin@marketplace → true/false
+    extraKnownMarketplaces?: Record<string, any>;
+    pluginConfig?: Record<string, any>;       // per-plugin config (keyed by plugin@marketplace)
     telemetryEnabled?: boolean;
-    pluginConfig?: Record<string, any>;
+
+    // MCP project-shared server approvals (when applicable)
+    enabledMcpjsonServers?: string[];
+    disabledMcpjsonServers?: string[];
+    enableAllProjectMcpServers?: boolean;
 }
 ```
 
@@ -1570,7 +1570,7 @@ function Z1(event, data) {
 
 ```javascript
 function v4() {
-    const localConfigPath = path.join(process.cwd(), '.claude', 'config.json');
+    const localConfigPath = path.join(process.cwd(), '.claude', 'settings.json');
     if (fs.existsSync(localConfigPath)) {
         return JSON.parse(fs.readFileSync(localConfigPath, 'utf8'));
     }
@@ -1582,7 +1582,7 @@ function v4() {
 
 ```javascript
 function q0() {
-    const userConfigPath = path.join(os.homedir(), '.claude', 'config.json');
+    const userConfigPath = path.join(os.homedir(), '.claude', 'settings.json');
     if (fs.existsSync(userConfigPath)) {
         return JSON.parse(fs.readFileSync(userConfigPath, 'utf8'));
     }
@@ -1598,7 +1598,7 @@ function LG(config) {
     if (!fs.existsSync(configDir)) {
         fs.mkdirSync(configDir, { recursive: true });
     }
-    const configPath = path.join(configDir, 'config.json');
+    const configPath = path.join(configDir, 'settings.json');
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
 }
 ```
@@ -1644,7 +1644,7 @@ User Input: "anthropics/claude-plugins"
 
 ### Marketplace Caching
 
-**Cache Location**: `~/.claude/marketplaces.json`
+**Cache Location**: `~/.claude/plugins/known_marketplaces.json` (or `~/.claude/cowork_plugins/known_marketplaces.json`)
 
 **Cache Structure**:
 ```json
@@ -1661,26 +1661,24 @@ User Input: "anthropics/claude-plugins"
 ```
 
 **Cache Update Triggers**:
-1. `marketplace add` - Initial cache creation
-2. `marketplace update` - Refresh from source
-3. `marketplace remove` - Remove from cache
+1. `plugin marketplace add` - Initial cache creation
+2. `plugin marketplace update` - Refresh from source
+3. `plugin marketplace remove` - Remove from cache
 
 **Cache Access**:
-- `pY()` - Read entire cache
-- `VF()` - Update cache after modifications
+- Implemented by the marketplace handlers used by `claude plugin marketplace ...` commands.
 
 ### Plugin Resolution Algorithm
 
-When installing `claude plugin install my-plugin@marketplace@1.2.0`:
+When installing `claude plugin install my-plugin@marketplace` (or `claude plugin install my-plugin`):
 
 ```
 1. Parse identifier
    ├─ name: "my-plugin"
-   ├─ marketplace: "marketplace"  (optional)
-   └─ version: "1.2.0"            (optional)
+   └─ marketplace: "marketplace"  (optional)
 
 2. Load marketplaces
-   └─ pY() returns marketplace map
+   └─ Load known marketplaces + any repo-provided marketplaces
 
 3. Search strategy:
    ├─ If marketplace specified:
@@ -1695,8 +1693,7 @@ When installing `claude plugin install my-plugin@marketplace@1.2.0`:
          └─ None found → ERROR
 
 4. Version matching:
-   ├─ If version specified: exact match
-   └─ If version NOT specified: latest version
+   └─ Version selection is determined by the marketplace entry you install.
 ```
 
 ### Marketplace Update Strategy
@@ -1731,10 +1728,10 @@ When installing `claude plugin install my-plugin@marketplace@1.2.0`:
 **Debug Steps**:
 ```bash
 # 1. Check marketplace is configured
-claude marketplace list
+claude plugin marketplace list
 
 # 2. Update marketplace
-claude marketplace update
+claude plugin marketplace update
 
 # 3. Try with marketplace qualifier
 claude plugin install plugin-name@marketplace-name
@@ -1825,7 +1822,7 @@ claude plugin uninstall plugin-name
 claude plugin install plugin-name
 
 # Option 2: Update via marketplace
-claude marketplace update
+claude plugin marketplace update
 claude plugin uninstall plugin-name
 claude plugin install plugin-name
 ```
@@ -1839,29 +1836,29 @@ claude plugin install plugin-name
 **Valid Formats**:
 ```bash
 # GitHub (owner/repo)
-claude marketplace add anthropics/claude-plugins
+claude plugin marketplace add anthropics/claude-plugins
 
 # URL (must start with http:// or https://)
-claude marketplace add https://example.com/marketplace.json
+claude plugin marketplace add https://example.com/marketplace.json
 
 # Git (must start with git://)
-claude marketplace add git://github.com/org/repo.git
+claude plugin marketplace add git://github.com/org/repo.git
 
 # Local (must be valid path)
-claude marketplace add ./marketplace
-claude marketplace add /absolute/path/to/marketplace
+claude plugin marketplace add ./marketplace
+claude plugin marketplace add /absolute/path/to/marketplace
 ```
 
 **Invalid Examples**:
 ```bash
 # ✗ Missing protocol
-claude marketplace add example.com/marketplace.json
+claude plugin marketplace add example.com/marketplace.json
 
 # ✗ Malformed GitHub
-claude marketplace add anthropics-claude-plugins
+claude plugin marketplace add anthropics-claude-plugins
 
 # ✗ Relative path that doesn't exist
-claude marketplace add ../nonexistent
+claude plugin marketplace add ../nonexistent
 ```
 
 ---
@@ -1930,14 +1927,17 @@ cat ~/.claude/debug/latest
 #### Check Configuration Files
 
 ```bash
-# User config
-cat ~/.claude/config.json
+# User settings
+cat ~/.claude/settings.json
 
 # Marketplace config
-cat ~/.claude/marketplaces.json
+cat ~/.claude/plugins/known_marketplaces.json
+
+# Installed plugin state
+cat ~/.claude/plugins/installed_plugins.json
 
 # Plugin manifests
-find ~/.claude/plugins -name "plugin.json" -exec cat {} \;
+find ~/.claude/plugins -path "*/.claude-plugin/plugin.json" -exec cat {} \;
 ```
 
 #### Verify File Integrity
@@ -1948,13 +1948,13 @@ find ~/.claude/plugins -type f
 
 # Check for missing manifests
 for dir in ~/.claude/plugins/*/; do
-  if [ ! -f "${dir}plugin.json" ]; then
+  if [ ! -f "${dir}.claude-plugin/plugin.json" ]; then
     echo "Missing manifest: $dir"
   fi
 done
 
 # Check manifest validity
-for manifest in ~/.claude/plugins/*/plugin.json; do
+for manifest in ~/.claude/plugins/*/.claude-plugin/plugin.json; do
   echo "Validating: $manifest"
   claude plugin validate "$manifest"
 done
@@ -2003,7 +2003,7 @@ claude plugin validate ./marketplace.json
 **Step 3: Add to Claude**
 
 ```bash
-claude marketplace add /company/plugins/marketplace.json
+claude plugin marketplace add /company/plugins/marketplace.json
 ```
 
 **Step 4: Install plugins**
@@ -2094,7 +2094,7 @@ cat > ~/dev/marketplace/marketplace.json << 'EOF'
 EOF
 
 # Add marketplace
-claude marketplace add ~/dev/marketplace/marketplace.json
+claude plugin marketplace add ~/dev/marketplace/marketplace.json
 
 # Install plugin
 claude plugin install my-plugin@dev
@@ -2128,20 +2128,18 @@ done
 
 # Update all marketplaces
 echo "Updating marketplaces..."
-claude marketplace update
+claude plugin marketplace update
 
-# Get list of enabled plugins from config
-PLUGINS=$(cat ~/.claude/config.json | jq -r '.enabledPlugins[]')
+# Get list of enabled plugin IDs
+PLUGINS=$(claude plugin list --json | jq -r '.[] | select(.enabled==true) | .id')
 
-# Reinstall each to get latest version
+# Update each plugin to the latest available version (restart required)
 for plugin in $PLUGINS; do
   echo "Updating $plugin..."
-  claude plugin uninstall "$plugin"
-  claude plugin install "$plugin"
-  claude plugin enable "$plugin"
+  claude plugin update "$plugin"
 done
 
-echo "All plugins updated!"
+echo "All plugins updated. Restart Claude Code to apply updates."
 ```
 
 ---
@@ -2178,7 +2176,7 @@ console.log("Plugin will be active in the next session");
 claude plugin uninstall plugin-from-marketplace
 
 # Then remove marketplace
-claude marketplace remove marketplace-name
+claude plugin marketplace remove marketplace-name
 ```
 
 ---
@@ -2254,7 +2252,7 @@ claude marketplace remove marketplace-name
 
 **Solution**: Always validate manifests before installing:
 ```bash
-claude plugin validate ./plugin.json
+claude plugin validate .
 ```
 
 ---
@@ -2263,7 +2261,7 @@ claude plugin validate ./plugin.json
 
 **Problem**: Plugin commands always send telemetry if globally enabled.
 
-**Solution**: Disable telemetry globally in `~/.claude/config.json`:
+**Solution**: Disable telemetry globally in `~/.claude/settings.json`:
 ```json
 {
   "telemetryEnabled": false
@@ -2280,11 +2278,8 @@ claude plugin validate ./plugin.json
 
 **Workaround**:
 ```bash
-# List marketplaces
-claude marketplace list
-
-# Manually check marketplace files
-cat ~/.claude/marketplaces.json | jq '.official.plugins[] | {name, description}'
+# Dump installed + available plugins (includes marketplace entries)
+claude plugin list --json --available | jq '.available[] | {pluginId, description, marketplaceName, version}'
 ```
 
 ---
@@ -2295,7 +2290,7 @@ cat ~/.claude/marketplaces.json | jq '.official.plugins[] | {name, description}'
 
 **Workaround**: Read plugin manifest directly:
 ```bash
-cat ~/.claude/plugins/my-plugin/plugin.json
+find ~/.claude/plugins -path "*/.claude-plugin/plugin.json" -maxdepth 6 -print -exec cat {} \;
 ```
 
 ---
@@ -2334,7 +2329,7 @@ cat ~/.claude/plugins/my-plugin/plugin.json
 
 **Workaround**: Manual re-install:
 ```bash
-claude marketplace update
+claude plugin marketplace update
 claude plugin uninstall old-plugin
 claude plugin install old-plugin  # Gets new version
 ```
@@ -2378,12 +2373,12 @@ z0.checkboxOff = "☐"       // Unchecked
 
 ### Version History
 
-**Current Version**: 2.0.22
+**Current Version**: 2.1.42
 
 **CLI Version Check**:
 ```bash
 claude --version
-# Output: 2.0.22
+# Output: 2.1.42
 ```
 
 ### Related Documentation
@@ -2406,5 +2401,5 @@ https://docs.claude.com/en/docs/claude-code/legal-and-compliance
 
 **END OF DOCUMENT**
 
-*This documentation was extracted from actual source code analysis of `@anthropic-ai/claude-agent-sdk` version 2.0.22 CLI implementation (cli.js, 9.7MB minified).*
+*This documentation was extracted from actual source code analysis of `@anthropic-ai/claude-code` version 2.1.42 (`@anthropic-ai/claude-code/cli.js`).*
 

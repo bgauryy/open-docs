@@ -119,16 +119,20 @@ The SDK provides:
    ```
 
 2. **Custom Tool Creation** (`tool()` function):
+
+   **Source**: `@anthropic-ai/sdk` (`sdk.mjs`, not part of the Claude Code CLI bundle); search for `function tool(name, description, inputSchema, handler)`.
+
    ```javascript
-   // Line 14795 in sdk.mjs
    function tool(name, description, inputSchema, handler) {
      return { name, description, inputSchema, handler };
    }
    ```
 
 3. **MCP Server Creation** (`createSdkMcpServer()`):
+
+   **Source**: `@anthropic-ai/sdk` (`sdk.mjs`, not part of the Claude Code CLI bundle); search for `function createSdkMcpServer`.
+
    ```javascript
-   // Line 14798 in sdk.mjs
    function createSdkMcpServer(options) {
      const server = new McpServer({
        name: options.name,
@@ -240,8 +244,9 @@ Example from CLI (TodoWrite tool - found via strings extraction):
 
 #### SDK Memory (sdk.mjs)
 
+**Source**: `@anthropic-ai/sdk` (`sdk.mjs`, not part of the Claude Code CLI bundle); search for `agentColorMap`, `agentColorIndex`, and `inMemoryErrorLog`.
+
 ```javascript
-// Line 7382 in sdk.mjs
 {
   agentColorMap: new Map,
   agentColorIndex: 0,
@@ -396,8 +401,9 @@ query({
 
 The SDK serializes agents to JSON and passes them to the CLI:
 
+**Source**: `@anthropic-ai/sdk` (`sdk.mjs`, not part of the Claude Code CLI bundle); search for `args.push("--agents", JSON.stringify(agents))`.
+
 ```javascript
-// Line 6427-6428 in sdk.mjs
 if (agents && Object.keys(agents).length > 0) {
   args.push("--agents", JSON.stringify(agents));
 }
@@ -439,7 +445,7 @@ After exhaustive search:
 
 1. **Agents** - May be confused with "skills" (specialized capabilities)
 2. **Custom Tools** - User-defined tools via MCP
-3. **Built-in Tools** - The 17 tools might be called "skills" colloquially
+3. **Built-in Tools** - The built-in tools might be called "skills" colloquially
 4. **Future Feature** - Skills may be planned but not yet implemented
 
 ### What Provides Skill-Like Functionality?
@@ -1148,38 +1154,38 @@ The Claude Agent SDK is a **well-architected process-based system** that provide
 
 ### Strengths
 
-✅ **Type Safety**: Full TypeScript definitions
-✅ **Flexibility**: Multiple language support via CLI
-✅ **Extensibility**: MCP integration for custom tools
-✅ **Reliability**: Process isolation and error handling
-✅ **Performance**: Streaming for real-time updates
-✅ **Developer Experience**: Simple API, comprehensive docs
+- **Type Safety**: Full TypeScript definitions
+- **Flexibility**: Multiple language support via CLI
+- **Extensibility**: MCP integration for custom tools
+- **Reliability**: Process isolation and error handling
+- **Performance**: Streaming for real-time updates
+- **Developer Experience**: Simple API, comprehensive docs
 
 ### Architecture Decisions
 
-🎯 **Process-Based**: CLI as separate process
-🎯 **Stream Communication**: JSON over stdio
-🎯 **Type + Runtime**: TypeScript + Zod validation
-🎯 **Plugin System**: MCP for extensibility
-🎯 **Session Persistence**: File-based storage
+- **Process-Based**: CLI as separate process
+- **Stream Communication**: JSON over stdio
+- **Type + Runtime**: TypeScript + Zod validation
+- **Plugin System**: MCP for extensibility
+- **Session Persistence**: File-based storage
 
 ### Notable Absences
 
-❌ **No Skills System**: Not implemented in v0.1.22
-❌ **No Direct Tool Implementation**: All tools in CLI
-❌ **No Built-in Storage**: Minimal memory, file-based sessions
-❌ **No Process Pooling**: New process per query
+- **No Skills System**: Not implemented in v0.1.22
+- **No Direct Tool Implementation**: All tools in CLI
+- **No Built-in Storage**: Minimal memory, file-based sessions
+- **No Process Pooling**: New process per query
 
 ### Recommended Use Cases
 
-✅ **Best For:**
+**Best For:**
 - Building autonomous AI agents
 - Complex multi-step workflows
 - Codebase analysis and modification
 - Integration with existing tools (MCP)
 - Custom agent applications
 
-⚠️ **Not Ideal For:**
+**Not Ideal For:**
 - High-frequency short queries (startup overhead)
 - Memory-constrained environments (200-500MB typical)
 - Real-time streaming (1-10ms message latency)
