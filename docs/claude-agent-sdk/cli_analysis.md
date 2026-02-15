@@ -5,7 +5,7 @@
 ### The SDK is a CLI Wrapper!
 
 **Critical Finding**: The SDK (`sdk.mjs`, v0.1.22) is essentially a thin wrapper that:
-1. Spawns the Claude Code CLI (`cli.js`, v2.0.22) as a child process
+1. Spawns the Claude Code CLI (`cli.js`, v2.1.42) as a child process
 2. Communicates via stdio using JSON streaming
 3. Passes configuration as command-line flags
 4. Handles the async generator interface for the user
@@ -34,7 +34,7 @@ const args = [
 
 | Component | Version | Purpose |
 |-----------|---------|---------|
-| **CLI** (`cli.js`) | 2.0.22 | Actual Claude Code implementation |
+| **CLI** (`cli.js`) | v2.1.42 | Actual Claude Code implementation |
 | **SDK** (`sdk.mjs`) | 0.1.22 | Node.js wrapper/interface |
 
 This version difference suggests:
@@ -486,7 +486,7 @@ const fs = {
 ## Key Takeaways
 
 1. **CLI is the Real Implementation**
-   - CLI v2.0.22 contains all actual logic
+   - CLI v2.1.42 contains all actual logic
    - SDK v0.1.22 is just a thin wrapper
 
 2. **Comprehensive Feature Set**

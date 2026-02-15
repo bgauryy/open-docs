@@ -12,7 +12,7 @@
 - [Creating AGENTS.md](#creating-agentsmd)
 - [Custom Instructions](#custom-instructions)
 - [Best Practices](#best-practices)
-- [Skills System](#skills-system-new-in-v10) - NEW
+- [Skills System](#skills-system-v10)
 
 ---
 
@@ -635,7 +635,7 @@ If your `AGENTS.md` is very long:
 
 ---
 
-## Skills System (NEW in v1.0+)
+## Skills System (v1.0+)
 
 ### What are Skills?
 

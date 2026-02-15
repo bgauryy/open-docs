@@ -55,14 +55,40 @@ export {
 
 1. **Query Interface**: Async generator pattern for streaming interaction
 2. **Agent System**: Define specialized sub-agents with custom prompts and tool access
-3. **17+ Built-in Tools**: Complete file, shell, search, and web capabilities
-4. **Hook System**: 9 event types for intercepting and modifying behavior
-5. **Permission System**: 4 modes with fine-grained control and runtime updates
+3. **Tool Access**: Tools are implemented by the spawned Claude Code executable
+4. **Hook System**: Hook event types depend on the Claude Code version you run
+5. **Permission System**: Permission modes and rules depend on the Claude Code version you run
 6. **MCP Integration**: 4 transport types + custom in-process tools
 7. **Session Management**: Resume, fork, and manage long-running sessions
 8. **Usage Tracking**: Per-model token and cost tracking
 9. **Runtime Control**: Change models, permissions, and parameters during execution
 10. **Error Handling**: Comprehensive error types and recovery
+
+### Claude Code Versioning (SDK vs CLI)
+
+The SDK runs sessions by spawning a Claude Code executable.
+
+- By default, `query()` uses the `cli.js` bundled inside the SDK package.
+- To get a specific Claude Code behavior (tools, hooks, permission modes, etc.), set `options.pathToClaudeCodeExecutable` to a specific Claude Code install (for example `@anthropic-ai/claude-code@2.1.42` or a native binary install).
+
+Example:
+```ts
+import { query } from "@anthropic-ai/claude-agent-sdk";
+
+const session = query({
+  prompt: "Summarize this repository",
+  options: {
+    cwd: "/path/to/project",
+    pathToClaudeCodeExecutable: "/path/to/claude-code", // or "/path/to/cli.js"
+  },
+});
+```
+
+For Claude Code v2.1.42 specifics, prefer the Claude Code docs in this folder:
+- `tools-complete.md`
+- `hooks-permissions-complete.md`
+- `lsp.md` (Language Server Protocol integration)
+- `toolsearch.md` (deferred tool discovery/selection)
 
 ---
 
@@ -375,295 +401,29 @@ export class AbortError extends Error {
 }
 ```
 
+Note: `HOOK_EVENTS` reflects the SDK type definitions. The actual hook events supported at runtime are determined by the Claude Code executable you run. For Claude Code v2.1.42, see `hooks-permissions-complete.md`.
+
 ---
 
 ## Built-in Tools
 
-The SDK provides 17 built-in tools for agent operations:
+The SDK does not define the runtime toolset by itself. Instead, the runtime toolset is provided by the Claude Code executable you run via `options.pathToClaudeCodeExecutable`.
 
-### 1. Task (Agent) - Sub-agent Delegation
+Key points:
+- Tool names for allowlists (e.g., `tools: ["Read", "Grep"]`) must match the spawned Claude Code tool registry.
+- Tool availability and schemas vary by Claude Code version.
 
-Invoke sub-agents for specialized tasks.
+For Claude Code v2.1.42, use these as the authoritative references:
+- `tools-complete.md`
+- `extraction/tools-system-complete.md`
 
-**Schema**:
-```typescript
-interface AgentInput {
-  description: string;        // Short task description (3-5 words)
-  prompt: string;            // Detailed task for the agent
-  subagent_type: string;     // Agent name from agents config
-}
-```
-
-**Example**:
-```typescript
-{
-  "tool": "agent",
-  "input": {
-    "description": "Debug authentication issue",
-    "prompt": "Find why users can't log in",
-    "subagent_type": "debugger"
-  }
-}
-```
-
-### 2. Bash - Command Execution
-
-Execute shell commands.
-
-**Schema**:
-```typescript
-interface BashInput {
-  command: string;
-  description?: string;      // What the command does
-  timeout?: number;          // Max 600000ms (10 min)
-  run_in_background?: boolean;  // For long-running processes
-}
-```
-
-**Example**:
-```typescript
-{
-  "tool": "bash",
-  "input": {
-    "command": "npm install",
-    "description": "Install dependencies"
-  }
-}
-```
-
-### 3. BashOutput - Background Output Retrieval
-
-Get output from background bash processes.
-
-**Schema**:
-```typescript
-interface BashOutputInput {
-  bash_id: string;
-  filter?: string; // Regex to filter output lines
-}
-```
-
-### 4. KillShell - Process Termination
-
-Kill background shell processes.
-
-**Schema**:
-```typescript
-interface KillShellInput {
-  shell_id: string;
-}
-```
-
-### 5. Read - File Reading
-
-Read file contents with optional pagination.
-
-**Schema**:
-```typescript
-interface FileReadInput {
-  file_path: string;         // Absolute path
-  offset?: number;           // Start line
-  limit?: number;            // Number of lines
-}
-```
-
-### 6. Write - File Creation/Overwrite
-
-Write content to files.
-
-**Schema**:
-```typescript
-interface FileWriteInput {
-  file_path: string;         // Absolute path
-  content: string;
-}
-```
-
-### 7. Edit - File Modification
-
-Search and replace in files.
-
-**Schema**:
-```typescript
-interface FileEditInput {
-  file_path: string;
-  old_string: string;        // Must be unique unless replace_all
-  new_string: string;
-  replace_all?: boolean;     // Replace all occurrences
-}
-```
-
-**Example**:
-```typescript
-{
-  "tool": "file_edit",
-  "input": {
-    "file_path": "/path/to/file.ts",
-    "old_string": "const x = 1;",
-    "new_string": "const x = 2;",
-    "replace_all": false
-  }
-}
-```
-
-### 8. Glob - File Pattern Matching
-
-Find files by pattern.
-
-**Schema**:
-```typescript
-interface GlobInput {
-  pattern: string;           // e.g., "**/*.ts"
-  path?: string;             // Search directory (default: cwd)
-}
-```
-
-**Example**:
-```typescript
-{
-  "tool": "glob",
-  "input": {
-    "pattern": "src/**/*.ts",
-    "path": "/project"
-  }
-}
-```
-
-### 9. Grep - Content Search
-
-Search file contents with regex.
-
-**Schema**:
-```typescript
-interface GrepInput {
-  pattern: string;           // Regex pattern
-  path?: string;             // Directory to search
-  glob?: string;             // File pattern filter
-  output_mode?: 'content' | 'files_with_matches' | 'count';
-  '-B'?: number;             // Lines before match
-  '-A'?: number;             // Lines after match
-  '-C'?: number;             // Lines before and after
-  '-n'?: boolean;            // Show line numbers
-  '-i'?: boolean;            // Case insensitive
-  type?: string;             // File type (js, py, etc.)
-  head_limit?: number;       // Limit output lines
-  multiline?: boolean;       // Enable multiline matching
-}
-```
-
-**Example**:
-```typescript
-{
-  "tool": "grep",
-  "input": {
-    "pattern": "function.*getData",
-    "path": "./src",
-    "output_mode": "content",
-    "-C": 3,
-    "-n": true,
-    "type": "ts"
-  }
-}
-```
-
-### 10. TodoWrite - Task Management
-
-Manage task lists.
-
-**Schema**:
-```typescript
-interface TodoWriteInput {
-  todos: {
-    content: string;
-    status: 'pending' | 'in_progress' | 'completed';
-    activeForm: string;      // Present continuous form
-  }[];
-}
-```
-
-### 11. NotebookEdit - Jupyter Notebook Editing
-
-Edit Jupyter notebooks.
-
-**Schema**:
-```typescript
-interface NotebookEditInput {
-  notebook_path: string;
-  cell_id?: string;          // Cell to edit (or position for insert)
-  new_source: string;
-  cell_type?: 'code' | 'markdown';
-  edit_mode?: 'replace' | 'insert' | 'delete';
-}
-```
-
-### 12. WebFetch - Web Content Retrieval
-
-Fetch and analyze web content.
-
-**Schema**:
-```typescript
-interface WebFetchInput {
-  url: string;
-  prompt: string;            // What to extract from the page
-}
-```
-
-### 13. WebSearch - Web Searching
-
-Search the web.
-
-**Schema**:
-```typescript
-interface WebSearchInput {
-  query: string;
-  allowed_domains?: string[];
-  blocked_domains?: string[];
-}
-```
-
-### 14. ListMcpResources - MCP Resource Discovery
-
-List resources from MCP servers.
-
-**Schema**:
-```typescript
-interface ListMcpResourcesInput {
-  server?: string;           // Optional server name filter
-}
-```
-
-### 15. ReadMcpResource - MCP Resource Fetching
-
-Read a specific MCP resource.
-
-**Schema**:
-```typescript
-interface ReadMcpResourceInput {
-  server: string;
-  uri: string;
-}
-```
-
-### 16. Mcp - Custom MCP Tool Invocation
-
-Generic MCP tool invocation.
-
-**Schema**:
-```typescript
-interface McpInput {
-  [key: string]: unknown;    // Tool-specific parameters
-}
-```
-
-### 17. ExitPlanMode - Plan Approval
-
-Exit planning mode and begin execution.
-
-**Schema**:
-```typescript
-interface ExitPlanModeInput {
-  plan: string;              // The plan (markdown supported)
-}
+Example (tool-restricted agent):
+```ts
+export default {
+  name: "read-only",
+  description: "Only reads and searches",
+  tools: ["Read", "Glob", "Grep"],
+};
 ```
 
 ---
@@ -850,6 +610,8 @@ const session = query({
 ### Available Hooks
 
 Hooks allow you to intercept and modify agent behavior at key points:
+
+Note: This list reflects the SDK type definitions. The actual hook events supported at runtime are determined by the Claude Code executable you run. For Claude Code v2.1.42, see `hooks-permissions-complete.md`.
 
 ```typescript
 const HOOK_EVENTS = [
@@ -1145,8 +907,12 @@ type PermissionMode =
   | 'default'            // Ask for each tool use
   | 'acceptEdits'        // Auto-accept file edits
   | 'bypassPermissions'  // Skip all permission checks
+  | 'delegate'           // Delegate approvals externally (mode availability is policy/feature dependent)
+  | 'dontAsk'            // Never prompt; deny instead of asking
   | 'plan';              // Planning mode (no execution)
 ```
+
+Note: Permission modes are determined by the Claude Code executable you run. For Claude Code v2.1.42, see `hooks-permissions-complete.md`. SDK type definitions may lag behind runtime behavior.
 
 ### Permission Behavior
 
@@ -2636,9 +2402,9 @@ The Claude Agent SDK provides a comprehensive platform for building autonomous A
 ### Core Capabilities
 - **Query Interface**: Async generator pattern for streaming interaction
 - **Agent System**: Define specialized sub-agents with custom prompts and tool access
-- **17+ Built-in Tools**: Complete file, shell, search, and web capabilities
-- **Hook System**: 9 event types for intercepting and modifying behavior
-- **Permission System**: 4 modes with fine-grained control and runtime updates
+- **Tool Access**: Tools are implemented by the spawned Claude Code executable
+- **Hook System**: Hook event types depend on the Claude Code version you run
+- **Permission System**: Permission modes and rules depend on the Claude Code version you run
 - **MCP Integration**: 4 transport types + custom in-process tools
 - **Session Management**: Resume, fork, and manage long-running sessions
 - **Usage Tracking**: Per-model token and cost tracking

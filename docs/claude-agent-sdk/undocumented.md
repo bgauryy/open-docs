@@ -1,6 +1,6 @@
 # Claude Agent SDK - Undocumented & Internal Features
 
-**Version**: 2.0.22
+**Version**: 2.1.42
 
 ---
 
@@ -246,8 +246,8 @@ for await (const message of q) {
 - Difficult to extract implementation details
 
 **Notable**:
-- CLI Version: `2.0.22` (separate from package version 0.1.22)
-- Version comment at line 4: `// Version: 2.0.22`
+- CLI Version: `v2.1.42` (separate from package version 0.1.22)
+- Version comment at line 4: `// Version: v2.1.42`
 - Recruitment message at line 6: `// Want to see the unminified source? We're hiring!`
 - Job link at line 7: `https://job-boards.greenhouse.io/anthropic/jobs/4816199008`
 

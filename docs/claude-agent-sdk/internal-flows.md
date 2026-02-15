@@ -2,6 +2,8 @@
 
 **Document Purpose**: Describes the internal implementation and usage of each tool in the Claude Agent SDK based on actual code analysis from `@anthropic-ai/claude-agent-sdk@0.1.22`
 
+Note: Claude Code also exposes runtime-only tools that are not part of the SDK's `sdk-tools.d.ts` surface (for example `ToolSearch` and `LSP`). See `tools-complete.md`, `toolsearch.md`, and `lsp.md` for the v2.1.42 runtime behavior.
+
 ---
 
 ## Core Tool System Architecture

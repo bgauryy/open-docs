@@ -388,7 +388,7 @@ with:
 - [MCP Integration](../extraction/mcp-integration-complete.md) - External tools
 
 **Advanced Topics**:
-- [Tool System](../extraction/tools-system-complete.md) - All 17 tools
+- [Tool System](../tools-complete.md) - All 30 tools
 - [Configuration](../extraction/configuration-complete.md) - Advanced setup
 - [Internal Constants](../extraction/cli-internal-constants.md) - Limits & gotchas
 
@@ -491,7 +491,7 @@ security-review      # Security audit (git-restricted)
 
 **Recommended Next Reading**:
 1. [Agents & Subagents Guide](../extraction/agents-subagents-complete.md) - Learn about token savings
-2. [Tool System Reference](../extraction/tools-system-complete.md) - Master all 17 tools
+2. [Tool System Reference](../tools-complete.md) - Master all 30 tools
 3. [Permissions Guide](../extraction/permissions-system-complete.md) - Configure security
 
 **Happy Coding! 🚀**

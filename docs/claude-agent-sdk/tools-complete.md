@@ -9,22 +9,26 @@
 
 1. [Overview](#overview)
 2. [Tool Categories](#tool-categories)
-3. [All 17 Tools Detailed](#all-17-tools-detailed)
-4. [Tool Input Schemas](#tool-input-schemas)
-5. [Tool Execution Patterns](#tool-execution-patterns)
-6. [Tool Restrictions](#tool-restrictions)
-7. [Permission System](#permission-system)
-8. [MCP Tool Integration](#mcp-tool-integration)
-9. [Custom Tool Creation](#custom-tool-creation)
-10. [Performance Characteristics](#performance-characteristics)
-11. [Real-World Usage Patterns](#real-world-usage-patterns)
-12. [Gotchas & Best Practices](#gotchas--best-practices)
+3. [Core Tools (17 with TypeScript Definitions)](#core-tools-17-with-typescript-definitions)
+4. [Additional Tools (Not in TypeScript Definitions)](#additional-tools-not-in-typescript-definitions)
+5. [Tool Input Schemas](#tool-input-schemas)
+6. [Tool Execution Patterns](#tool-execution-patterns)
+7. [Tool Restrictions](#tool-restrictions)
+8. [Permission System](#permission-system)
+9. [MCP Tool Integration](#mcp-tool-integration)
+10. [Custom Tool Creation](#custom-tool-creation)
+11. [Performance Characteristics](#performance-characteristics)
+12. [Real-World Usage Patterns](#real-world-usage-patterns)
+13. [Gotchas & Best Practices](#gotchas--best-practices)
+14. [Summary](#summary)
 
 ---
 
 ## Overview
 
-The Claude Agent SDK includes **17 built-in tools** for file operations, execution, web access, agent management, and MCP integration.
+Note: This document started from `sdk-tools.d.ts` (17 typed tools). Claude Code v2.1.42 exposes additional runtime tools; these are documented in [Additional Tools](#additional-tools-not-in-typescript-definitions).
+
+The Claude Agent SDK includes **30+ built-in tools** for file operations, execution, web access, agent management, task management, user interaction, MCP integration, and code intelligence.
 
 ### Tool Type Union (from source)
 
@@ -58,24 +62,33 @@ export type ToolInputSchemas =
 ## Tool Categories
 
 ### File Operations (6 tools)
-- **FileRead** - Read file contents
-- **FileWrite** - Write/create files
-- **FileEdit** - Edit existing files
+- **FileRead** (Read) - Read file contents
+- **FileWrite** (Write) - Write/create files
+- **FileEdit** (Edit) - Edit existing files
 - **Glob** - Find files by pattern
 - **Grep** - Search file contents
 - **NotebookEdit** - Edit Jupyter notebooks
 
 ### Execution (3 tools)
 - **Bash** - Execute shell commands
-- **BashOutput** - Retrieve background shell output
-- **KillShell** - Terminate background shells
+- **BashOutput** (TaskOutput) - Retrieve background shell/task output
+- **KillShell** (TaskStop) - Terminate background shells/tasks
 
-### Agent Management (2 tools)
+### Agent & Task Management (9 tools)
 - **Agent** (Task) - Invoke subagents
-- **TodoWrite** - Manage task lists
+- **TodoWrite** - Manage task lists (deprecated, use TaskCreate/TaskUpdate)
+- **TaskCreate** - Create new task
+- **TaskUpdate** - Update task status
+- **TaskGet** - Get task details
+- **TaskList** - List all tasks
+- **TeamCreate** - Create team (enterprise feature)
+- **TeamDelete** - Delete team (enterprise feature)
+- **Skill** - Invoke skill commands
 
-### Planning (1 tool)
+### Planning & User Interaction (3 tools)
+- **EnterPlanMode** - Enter planning mode
 - **ExitPlanMode** - Exit planning mode
+- **AskUserQuestion** - Ask user for input/decisions
 
 ### Web Operations (2 tools)
 - **WebFetch** - Fetch and process web content
@@ -86,9 +99,15 @@ export type ToolInputSchemas =
 - **ReadMcpResource** - Read MCP resource
 - **McpInput** - Generic MCP tool invocation
 
+### Tool Discovery & Code Intelligence (2 tools)
+- **ToolSearch** - Search/select deferred tools
+- **LSP** - Language Server Protocol code intelligence queries
+
+**Total: 30 tools** (17 in TypeScript definitions + 13 additional runtime tools)
+
 ---
 
-## All 17 Tools Detailed
+## Core Tools (17 with TypeScript Definitions)
 
 ### 1. FileRead
 
@@ -113,7 +132,7 @@ export interface FileReadInput {
 **Characteristics**:
 - **Default**: First 2000 lines
 - **Per-Line Limit**: 2000 characters (truncated silently)
-- **PDF Support**: Max 32MB
+- **PDF Support**: Max 20MB (tj1 = 20971520)
 - **Caching**: File cached after first read
 - **Speed**: 1-50ms (cached: <5ms)
 
@@ -140,7 +159,7 @@ FileRead({
 **Gotchas**:
 - Silent per-line truncation at 2000 chars
 - Offset is line-based, not byte-based
-- PDFs > 32MB are rejected
+- PDFs > 20MB are rejected
 
 ---
 
@@ -530,6 +549,12 @@ export interface BashInput {
   /** Set to true to run this command in the background. 
    *  Use BashOutput to read the output later. */
   run_in_background?: boolean;
+
+  /**
+   * Runtime-only (v2.1.42): dangerously override sandbox mode and run commands without sandboxing.
+   * This is an advanced escape hatch and should be avoided unless you fully understand the risk.
+   */
+  dangerouslyDisableSandbox?: boolean;
 }
 ```
 
@@ -537,7 +562,7 @@ export interface BashInput {
 - **Default Timeout**: 120,000ms (2 minutes)
 - **Max Timeout**: 600,000ms (10 minutes)
 - **Output Truncation**: 30,000 characters (silent!)
-- **Background Execution**: Returns immediately with shell ID
+- **Background Execution**: Returns immediately with a background task ID (use `TaskOutput` to poll output/status)
 - **Speed**: Variable (command-dependent)
 
 **Examples**:
@@ -562,7 +587,7 @@ Bash({
   command: "npm test",
   run_in_background: true
 })
-// Returns: { bash_id: "shell_abc123" }
+// Returns a background task ID (see TaskOutput/TaskStop for how to poll/stop)
 ```
 
 **Output Truncation Example**:
@@ -601,6 +626,10 @@ export interface BashOutputInput {
   filter?: string;
 }
 ```
+
+**Runtime note (v2.1.42)**:
+- In the CLI runtime, background work is tracked as **tasks** and output polling is implemented by the `TaskOutput` tool (see “25. TaskOutput”), which uses `task_id`, `block`, and `timeout`.
+- The `bash_id`-based schema in `sdk-tools.d.ts` may be legacy/out-of-sync with the CLI runtime in v2.1.42; documenters should treat `TaskOutput` as the canonical interface.
 
 **Characteristics**:
 - **Retrieval**: Get output from background shell
@@ -649,6 +678,10 @@ export interface KillShellInput {
   shell_id: string;
 }
 ```
+
+**Runtime note (v2.1.42)**:
+- In the CLI runtime, stop semantics are implemented by the `TaskStop` tool (see “26. TaskStop”), which accepts `task_id` (preferred) and `shell_id` (deprecated).
+- If you are writing docs for v2.1.42 behavior, treat `TaskStop` as the canonical interface and `KillShell` as a legacy/alias surface.
 
 **Characteristics**:
 - **Termination**: Kills background process
@@ -1065,6 +1098,28 @@ for (const file of files) {
   FileEdit({ file_path: file, ... });
 }
 ```
+
+### Tool Execution Pipeline (Runtime)
+
+In Claude Code’s runtime (v2.1.42), a built-in tool generally follows this pipeline:
+
+1. **Enablement + availability**
+   - Tool decides if it is enabled (`isEnabled()`), and whether it is safe to run concurrently (`isConcurrencySafe()`).
+
+2. **Schema validation**
+   - Tool inputs are validated against a runtime schema (commonly Zod) via `inputSchema`.
+
+3. **Permission decision**
+   - `checkPermissions(input, context)` returns `allow` / `deny` / `ask` and may provide an `updatedInput` (e.g., normalize arguments) and permission-update suggestions.
+
+4. **Execution**
+   - `call(input, context)` runs the tool and returns structured data (commonly as `{ data: ... }`).
+
+5. **Result mapping**
+   - The tool maps returned data into a tool-result block via `mapToolResultToToolResultBlockParam(...)`.
+   - Some tools return human-readable text; others return tag-oriented “structured text” (e.g., `TaskOutput`) to make downstream parsing easier.
+
+**Source (v2.1.42)**: In `@anthropic-ai/claude-code/cli.js`, search for `get inputSchema()`, `checkPermissions(`, `async call(`, and `mapToolResultToToolResultBlockParam(`.
 
 ---
 
@@ -1633,26 +1688,26 @@ KillShell({ shell_id: bash_id });
 
 **1. Always Read Before Edit/Write**:
 ```typescript
-// ✅ Correct
+// Correct
 FileRead({ file_path: "app.ts" });
 FileEdit({ file_path: "app.ts", ... });
 
-// ❌ Wrong - will fail
+// Wrong - will fail
 FileEdit({ file_path: "app.ts", ... });
 ```
 
 **2. Use Absolute Paths**:
 ```typescript
-// ✅ Correct
+// Correct
 FileWrite({ file_path: "/workspace/src/app.ts", ... })
 
-// ❌ Wrong - relative path
+// Wrong - relative path
 FileWrite({ file_path: "./src/app.ts", ... })
 ```
 
 **3. Set Explicit Bash Timeouts**:
 ```typescript
-// ✅ Good
+// Good
 Bash({
   command: "npm install",
   timeout: 300000  // 5 minutes
@@ -1661,7 +1716,7 @@ Bash({
 
 **4. Use Grep with output_mode**:
 ```typescript
-// ✅ Show content
+// Show content
 Grep({
   pattern: "function",
   output_mode: "content"
@@ -1670,10 +1725,445 @@ Grep({
 
 **5. Handle Bash Output Truncation**:
 ```typescript
-// ✅ Workaround
+// Workaround
 Bash({ command: "npm test > output.txt 2>&1" })
 FileRead({ file_path: "output.txt" })
 ```
+
+---
+
+## Additional Tools (Not in TypeScript Definitions)
+
+The following tools exist in the CLI runtime but are **not included** in the `sdk-tools.d.ts` TypeScript definitions. They are available through the system prompt and can be invoked by Claude.
+
+### 18. Skill
+
+**Purpose**: Invoke skill commands from SKILL.md files
+
+**Source (v2.1.42)**: In `@anthropic-ai/claude-code/cli.js`, search for `var yJ = 'Skill'` and `name: yJ`.
+
+**Schema** (v2.1.42 runtime):
+```typescript
+export interface SkillInput {
+  /** The name of the skill to invoke */
+  skill: string;
+
+  /** Optional arguments for the skill */
+  args?: string;
+}
+
+export type SkillOutput =
+  | {
+      success: boolean;
+      commandName: string;
+      /** Present for inline execution */
+      status?: "inline";
+      allowedTools?: string[];
+      model?: string;
+    }
+  | {
+      success: boolean;
+      commandName: string;
+      /** Present for forked execution */
+      status: "forked";
+      agentId: string;
+      result: string;
+    };
+```
+
+**Characteristics**:
+- Loads skills from SKILL.md files
+- Skills can define custom prompts and tool access
+- Used for structured workflows
+- Can disable model invocation
+- Can require permission prompts and may add allow rules (skill-specific) depending on local permission settings
+
+---
+
+### 19. AskUserQuestion
+
+**Purpose**: Ask user for input/decisions during execution
+
+**Source (v2.1.42)**: In `@anthropic-ai/claude-code/cli.js`, search for `var RH = 'AskUserQuestion'` and `name: RH`.
+
+**Schema** (v2.1.42 runtime):
+```typescript
+export interface AskUserQuestionInput {
+  /** Questions to ask (1-4 questions) */
+  questions: Array<{
+    question: string;
+    header: string;  // Short label (max 12 chars)
+    options: Array<{
+      label: string;
+      description: string;
+    }>;
+    multiSelect: boolean; // default: false
+  }>;
+
+  /** User answers (populated by system) */
+  answers?: Record<string, string>;
+
+  /** Optional analytics metadata (not shown to user) */
+  metadata?: {
+    source?: string;
+  };
+}
+
+export interface AskUserQuestionOutput {
+  questions: AskUserQuestionInput["questions"];
+  /** question text -> answer string (multi-select answers are comma-separated) */
+  answers: Record<string, string>;
+}
+```
+
+**Characteristics**:
+- Interactive user input during execution
+- Multiple choice questions (2-4 options)
+- Multi-select support
+- Used for clarifying ambiguous requirements
+
+---
+
+### 20. EnterPlanMode
+
+**Purpose**: Enter planning mode to design implementation strategy
+
+**Source (v2.1.42)**: In `@anthropic-ai/claude-code/cli.js`, search for `var gX6 = 'EnterPlanMode'` and `name: gX6`.
+
+**Schema**:
+```typescript
+export interface EnterPlanModeInput {
+  // No parameters
+}
+```
+
+**Characteristics**:
+- Switches the current session into permission mode `plan` (read-only planning phase)
+- Designed to be used before non-trivial implementation tasks
+- Allows exploration before coding
+- Creates implementation plan for user review
+- Cannot be used from subagent contexts (throws if `agentId` is present)
+
+---
+
+### 21. TaskCreate
+
+**Purpose**: Create new task in task list
+
+**Source (v2.1.42)**: In `@anthropic-ai/claude-code/cli.js`, search for `var fh = 'TaskCreate'` and `TaskCreate`.
+
+**Schema** (v2.1.42 runtime):
+```typescript
+export interface TaskCreateInput {
+  /** Brief, actionable title */
+  subject: string;
+
+  /** Detailed description */
+  description: string;
+
+  /** Present continuous form for spinner */
+  activeForm?: string;
+
+  /** Arbitrary metadata */
+  metadata?: Record<string, unknown>;
+}
+
+export interface TaskCreateOutput {
+  task: {
+    id: string;
+    subject: string;
+  };
+}
+```
+
+---
+
+### 22. TaskUpdate
+
+**Purpose**: Update task status/details
+
+**Source (v2.1.42)**: In `@anthropic-ai/claude-code/cli.js`, search for `var GR = 'TaskUpdate'` and `TaskUpdate`.
+
+**Schema** (v2.1.42 runtime):
+```typescript
+export interface TaskUpdateInput {
+  /** Task ID to update */
+  taskId: string;
+
+  /** New status */
+  status?: "pending" | "in_progress" | "completed" | "deleted";
+
+  /** New subject */
+  subject?: string;
+
+  /** New description */
+  description?: string;
+
+  /** Present continuous form shown when in_progress */
+  activeForm?: string;
+
+  /** Task owner */
+  owner?: string;
+
+  /** Task dependencies */
+  addBlocks?: string[];
+  addBlockedBy?: string[];
+
+  /** Metadata updates */
+  metadata?: Record<string, unknown | null>;
+}
+
+export interface TaskUpdateOutput {
+  success: boolean;
+  taskId: string;
+  updatedFields: string[];
+  error?: string;
+  statusChange?: { from: string; to: string };
+}
+```
+
+---
+
+### 23. TaskGet
+
+**Purpose**: Get task details by ID
+
+**Source (v2.1.42)**: In `@anthropic-ai/claude-code/cli.js`, search for `var W31 = 'TaskGet'` and `TaskGet`.
+
+**Schema**:
+```typescript
+export interface TaskGetInput {
+  /** Task ID to retrieve */
+  taskId: string;
+}
+
+export interface TaskGetOutput {
+  task: {
+    id: string;
+    subject: string;
+    description: string;
+    status: "pending" | "in_progress" | "completed";
+    blocks: string[];
+    blockedBy: string[];
+  } | null;
+}
+```
+
+---
+
+### 24. TaskList
+
+**Purpose**: List all tasks
+
+**Source (v2.1.42)**: In `@anthropic-ai/claude-code/cli.js`, search for `var G31 = 'TaskList'` and `TaskList`.
+
+**Schema**:
+```typescript
+export interface TaskListInput {
+  // No parameters
+}
+
+export interface TaskListOutput {
+  tasks: Array<{
+    id: string;
+    subject: string;
+    status: "pending" | "in_progress" | "completed";
+    owner?: string;
+    /**
+     * IDs of tasks blocking this one.
+     * Note: completed blockers may be filtered out in the returned list.
+     */
+    blockedBy: string[];
+  }>;
+}
+```
+
+---
+
+### 25. TaskOutput
+
+**Purpose**: Retrieve output from background task/shell
+
+**Source (v2.1.42)**: In `@anthropic-ai/claude-code/cli.js`, search for `var rM1 = 'TaskOutput'` and `name: rM1`.
+
+**Schema** (v2.1.42 runtime):
+```typescript
+export interface TaskOutputInput {
+  /** The task ID to get output from */
+  task_id: string;
+
+  /** Whether to wait for completion */
+  block?: boolean; // default: true
+
+  /** Max wait time in ms */
+  timeout?: number; // default: 30000, max: 600000
+}
+```
+
+**Output behavior**:
+- The tool result content is rendered as a structured, tag-oriented text block, including:
+  - `<retrieval_status>`: `success` | `not_ready` | `timeout`
+  - `<task_id>`, `<task_type>`, `<status>`
+  - optional `<exit_code>`, `<output>`, `<error>`
+- Use `block=false` to poll without waiting; use `timeout` to bound wait time.
+
+---
+
+### 26. TaskStop
+
+**Purpose**: Stop background task/shell
+
+**Source (v2.1.42)**: In `@anthropic-ai/claude-code/cli.js`, search for `var nM1 = 'TaskStop'` and `name: nM1`.
+
+**Schema** (v2.1.42 runtime):
+```typescript
+export interface TaskStopInput {
+  /** The ID of the background task to stop */
+  task_id?: string;
+
+  /** Deprecated: use task_id instead */
+  shell_id?: string;
+}
+
+export interface TaskStopOutput {
+  message: string;
+  task_id: string;
+  task_type: string;
+  command?: string;
+}
+```
+
+**Notes**:
+- Fails validation if neither `task_id` nor `shell_id` is provided.
+- Only stops tasks that exist and are currently `running` (otherwise returns a structured error).
+
+---
+
+### 27. TeamCreate
+
+**Purpose**: Create team (enterprise feature)
+
+**Source (v2.1.42)**: In `@anthropic-ai/claude-code/cli.js`, search for `var nh = 'TeamCreate'` and `TeamCreate`.
+
+**Schema** (v2.1.42 runtime):
+```typescript
+export interface TeamCreateInput {
+  team_name: string;
+  description?: string;
+  agent_type?: string;
+}
+
+export interface TeamCreateOutput {
+  team_name: string;
+  team_file_path: string;
+  lead_agent_id: string;
+}
+```
+
+**Behavior notes**:
+- Enabled only when team mode is available (enterprise/teammate feature flag).
+- Fails if already leading a team (a leader can manage only one team at a time).
+- Creates a team directory + `config.json`, updates in-memory team context, and initializes the team task list.
+
+---
+
+### 28. TeamDelete
+
+**Purpose**: Delete team (enterprise feature)
+
+**Source (v2.1.42)**: In `@anthropic-ai/claude-code/cli.js`, search for `var P31 = 'TeamDelete'` and `TeamDelete`.
+
+**Schema** (v2.1.42 runtime):
+```typescript
+export interface TeamDeleteInput {
+  // No parameters
+}
+
+export interface TeamDeleteOutput {
+  success: boolean;
+  message: string;
+  team_name?: string;
+}
+```
+
+**Behavior notes**:
+- Enabled only when team mode is available (enterprise/teammate feature flag).
+- Fails (returns `success: false`) if the team still has active members; teammates should be shut down first.
+- On success, cleans up team/task/worktree directories and clears the current team context.
+
+---
+
+### 29. ToolSearch
+
+**Purpose**: Search/select deferred tools
+
+**Source (v2.1.42)**: In `@anthropic-ai/claude-code/cli.js`, search for `QW = 'ToolSearch'`, `name: QW`, and `Query to find deferred tools`.
+
+**Schema** (v2.1.42 runtime):
+```typescript
+export interface ToolSearchInput {
+  /** Keywords, or "select:<tool_name>" for direct selection */
+  query: string;
+
+  /** Maximum number of results to return */
+  max_results?: number; // default: 5
+}
+
+export interface ToolSearchOutput {
+  matches: string[];
+  query: string;
+  total_deferred_tools: number;
+}
+```
+
+**Behavior notes**:
+- Intended for discovering tools not yet loaded into the active tool list (“deferred tools”).
+- `select:<tool_name>` is parsed case-insensitively and selects by exact tool name.
+- Declared read-only and concurrency-safe.
+
+See `toolsearch.md` for additional context and query patterns.
+
+---
+
+### 30. LSP
+
+**Purpose**: Language Server Protocol code intelligence (read-only)
+
+**Source (v2.1.42)**: In `@anthropic-ai/claude-code/cli.js`, search for `var VSA = 'LSP'`, `name: VSA`, and `operation: x.enum([`.
+
+**Schema** (v2.1.42 runtime):
+```typescript
+export interface LspInput {
+  operation:
+    | "goToDefinition"
+    | "findReferences"
+    | "hover"
+    | "documentSymbol"
+    | "workspaceSymbol"
+    | "goToImplementation"
+    | "prepareCallHierarchy"
+    | "incomingCalls"
+    | "outgoingCalls";
+  filePath: string;
+  line: number;      // 1-based
+  character: number; // 1-based
+}
+
+export interface LspOutput {
+  operation: LspInput["operation"];
+  result: string;
+  filePath: string;
+  resultCount?: number;
+  fileCount?: number;
+}
+```
+
+**Behavior notes**:
+- Declared read-only and concurrency-safe.
+- Enabled only when at least one LSP server is configured and not in an error state (see `isEnabled()` near `name: VSA`).
+- `line` and `character` are 1-based to match editor UX (not 0-based protocol coordinates).
+
+See `lsp.md` for configuration and troubleshooting details.
 
 ---
 
@@ -1683,11 +2173,13 @@ FileRead({ file_path: "output.txt" })
 
 - **File Operations**: 6 tools
 - **Execution**: 3 tools
-- **Agent Management**: 2 tools
-- **Planning**: 1 tool
+- **Agent & Task Management**: 9 tools
+- **Planning & User Interaction**: 3 tools
 - **Web**: 2 tools
 - **MCP**: 3 tools
-- **Total**: 17 tools
+- **Enterprise**: 2 tools
+- **Tool Discovery & Code Intelligence**: 2 tools
+- **Total**: 30 tools (17 in TypeScript + 13 runtime-only)
 
 ### Most Used Tools
 
@@ -1699,12 +2191,14 @@ FileRead({ file_path: "output.txt" })
 
 ### Key Takeaways
 
-- ✅ **17 built-in tools** for comprehensive functionality
-- ✅ **Type-safe schemas** generated from JSON Schema
-- ✅ **Zod validation** for runtime safety
-- ⚠️ **Read-before-write** strictly enforced
-- ⚠️ **Bash output truncation** at 30K chars (silent!)
-- ⚠️ **Grep default** is filenames only (not content)
-- ⚠️ **TodoWrite** requires exactly one in-progress task
+- **30 built-in tools** for comprehensive functionality (17 in TS definitions + 13 runtime-only)
+- **Type-safe schemas** for core tools (generated from JSON Schema)
+- **Zod validation** for runtime safety
+- **Runtime-only tools**: Additional tools are missing from TypeScript definitions (Skill, AskUserQuestion, task management, ToolSearch, LSP, etc.)
+- **Read-before-write** is strictly enforced
+- **Bash output truncation** at 30K chars is silent
+- **Grep default** is filenames only (not content)
+- **TodoWrite** is deprecated in favor of TaskCreate/TaskUpdate
+- **TodoWrite** requires exactly one in-progress task (legacy constraint)
 
 ---

@@ -30,7 +30,8 @@ The Claude Agent SDK CLI is a comprehensive command-line interface for managing 
 
 ### Key Statistics
 
-- **Total Commands**: 21+ top-level commands
+- **Total Commands**: 30+ commands (including subcommands)
+- **Command Groups**: 5 major groups (mcp, plugin, auth, tools, system)
 - **Telemetry Events**: 50+ tracked events
 - **Supported Platforms**: Windows, macOS, Linux
 - **Installation Methods**: npm-local, npm-global, native binary
@@ -61,7 +62,7 @@ The file is organized into distinct sections by character range:
 // Use is subject to Legal Agreements outlined here:
 // https://docs.claude.com/en/docs/claude-code/legal-and-compliance
 
-// Version: 2.0.22
+// Version: v2.1.42
 
 // Want to see the unminified source? We're hiring!
 // https://job-boards.greenhouse.io/anthropic/jobs/4816199008
@@ -79,58 +80,145 @@ The file is organized into distinct sections by character range:
 
 ## Entry Point & Initialization
 
-### Main Entry Function: `ZP8()` (Line 3733)
+### Main Entry Function
+
+**Source (v2.1.42)**: In `@anthropic-ai/claude-code/cli.js`, search for `async function sNz()` (or the final call `sNz();`).
 
 ```javascript
-async function ZP8() {
-    // Special Mode: Embedded ripgrep for file searching
-    if (process.argv[2] === "--ripgrep") {
-        let args = process.argv.slice(3);
-        let {ripgrepMain: Q} = await Promise.resolve()
-            .then(() => (fAA(), bAA));
-        process.exitCode = Q(args);
+async function sNz() {
+    let A = process.argv.slice(2);
+
+    // Special: Version check
+    if (A.length === 1 && (A[0] === "--version" || A[0] === "-v" || A[0] === "-V")) {
+        console.log("2.1.42 (Claude Code)");
         return;
     }
 
-    // Normal Mode: Initialize and run CLI
-    let {main: A} = await dyQ().then(() => myQ);
-    await A();
+    // Profile checkpointing
+    let {profileCheckpoint: q} = await Promise.resolve().then(...);
+    q("cli_entry");
+
+    // Special Mode: MCP CLI
+    if (A[0] === "--mcp-cli") {
+        // Load and execute MCP CLI mode
+        // ...
+    }
+
+    // Special Mode: Embedded ripgrep
+    if (A[0] === "--ripgrep") {
+        q("cli_ripgrep_path");
+        let {ripgrepMain: H} = await Promise.resolve().then(...);
+        process.exitCode = H(A.slice(1));
+        return;
+    }
+
+    // Special Mode: Chrome integrations
+    if (process.argv[2] === "--claude-in-chrome-mcp") {
+        let {runClaudeInChromeMcpServer} = await Promise.resolve().then(...);
+        await runClaudeInChromeMcpServer();
+        return;
+    } else if (process.argv[2] === "--chrome-native-host") {
+        let {runChromeNativeHost} = await Promise.resolve().then(...);
+        await runChromeNativeHost();
+        return;
+    }
+
+    // Normal Mode: Load and run main CLI
+    let {main: z} = await Promise.resolve().then(...);
+    q("cli_after_main_import");
+    await z();
+    q("cli_after_main_complete");
 }
 
 // Execute immediately
-ZP8();
+sNz();
 ```
 
-### Initialization Module: `dyQ()`
+### Startup Mode Dispatch (v2.1.42)
 
-The `dyQ()` function is an async initializer that loads all dependencies in parallel:
+Claude Code uses a single Node entrypoint (`sNz()`) that dispatches into multiple “modes” based on CLI arguments:
+
+- **Version mode**: `claude --version` / `-v` / `-V` prints the version string and exits.
+- **MCP CLI mode**: `claude --mcp-cli <subcommand> ...` runs the embedded MCP CLI implementation (`mcp-cli`) and exits.
+- **Embedded ripgrep mode**: `claude --ripgrep ...` runs the embedded `rg` implementation and exits.
+- **Chrome integration modes**: `claude --claude-in-chrome-mcp` and `claude --chrome-native-host` run dedicated servers/hosts and exit.
+- **Normal mode**: otherwise, it lazily imports and executes the main CLI (`main()`).
+
+This structure keeps the “normal CLI” cold-start fast by deferring heavy imports until after mode selection.
+
+Note: Some integration tools (notably Chrome-browser tools) are exposed as deferred tools and must be selected via `ToolSearch` before use; see `toolsearch.md`.
+
+**Source (v2.1.42)**: In `@anthropic-ai/claude-code/cli.js`, search for `A[0] === '--mcp-cli'`, `A[0] === '--ripgrep'`, `process.argv[2] === '--claude-in-chrome-mcp'`, and `process.argv[2] === '--chrome-native-host'`.
+
+### Remote Mode (environment-driven)
+
+When running in a remote environment, Claude Code changes some behaviors via environment variables:
+
+- `CLAUDE_CODE_REMOTE=true` increases the Node heap limit by appending `--max-old-space-size=8192` to `NODE_OPTIONS` before the CLI starts.
+- `CLAUDE_CODE_REMOTE_MEMORY_DIR` controls where **local agent memory** is stored when remote mode is enabled (used by the persistent memory subsystem).
+- `CLAUDE_CODE_REMOTE_SESSION_ID`, `CLAUDE_CODE_REMOTE_ENVIRONMENT_TYPE`, `CLAUDE_CODE_CONTAINER_ID`, and `CLAUDE_CODE_TAGS` are surfaced into environment/telemetry snapshots.
+- Some flows prefer HTTPS URLs over SSH when remote mode is enabled (e.g., cloning GitHub repos may switch from `git@github.com:owner/repo.git` to `https://github.com/owner/repo.git`).
+
+If you are documenting or debugging “remote mode”, treat these variables as part of the supported runtime surface.
+
+**Source (v2.1.42)**: In `@anthropic-ai/claude-code/cli.js`, search for `CLAUDE_CODE_REMOTE`, `CLAUDE_CODE_REMOTE_MEMORY_DIR`, `CLAUDE_CODE_REMOTE_SESSION_ID`, and `remoteEnvironmentType`.
+
+### Initialization Flow (v2.1.42)
+
+The initialization in v2.1.42 uses dynamic imports for lazy loading:
 
 ```javascript
-var dyQ = S(async () => {
-    // Parallel dependency loading (100+ modules)
-    await J1([
-        // File system & I/O
-        tPQ(), JjQ(), XjQ(), sQ(), Gi(), Ss0(),
+// v2.1.42 uses Promise.resolve().then() for dynamic imports
+// Each major component is loaded on-demand:
 
-        // HTTP & Network
-        $jQ(), EjQ(), c1(), Ot1(),
-
-        // React & UI
-        KP(), zt1(), Lm(), rjQ(),
-
-        // MCP & Business Logic
-        ejQ(), Oy1(), K7(), j2(),
-
-        // ... 80+ more modules
-    ]);
-
-    // Import React
-    M8 = B1(K1(), 1);
-
-    // Early exit checks
-    if (cT8()) process.exit(1);
+// Example: Loading main CLI
+let {main: z} = await Promise.resolve().then(() => {
+    $Sq();  // Initialize dependencies
+    return HSq;  // Return module exports
 });
+
+// Example: Loading ripgrep
+let {ripgrepMain: H} = await Promise.resolve().then(() => {
+    sDq();  // Initialize ripgrep
+    return oDq;  // Return ripgrep module
+});
+
+// Example: Loading MCP CLI
+let {mcpCliMain: $} = await Promise.resolve().then(() => {
+    aDq();  // Initialize MCP CLI
+    return rDq;  // Return MCP CLI module
+});
+
+// Note: Function names change with each build
+// Search for pattern: Promise.resolve().then(() => {...})
 ```
+
+#### High-level startup timeline
+
+Below is a practical “what happens first” view of the CLI startup, focusing on stable behavior rather than build-specific symbol names:
+
+1. **Process environment normalization**
+   - Disables Corepack auto pinning (`COREPACK_ENABLE_AUTO_PIN=0`).
+   - If `CLAUDE_CODE_REMOTE=true`, increases Node heap via `NODE_OPTIONS --max-old-space-size=8192`.
+
+2. **Argument-based mode dispatch (before main CLI imports)**
+   - `--version` / `-v` / `-V` prints version and exits.
+   - `--mcp-cli`, `--ripgrep`, Chrome integration flags run their dedicated mode and exit.
+
+3. **Profiling checkpoints**
+   - Initializes a lightweight profiling/checkpoint system and records milestones like `cli_entry`.
+
+4. **Early input capture (TTY cold-start)**
+   - If running interactively, the CLI begins capturing stdin early (raw mode) so user keystrokes aren’t lost while heavy modules load.
+
+5. **Lazy-import main CLI + parse commands**
+   - Dynamically imports `main()` and executes it.
+   - The main CLI wires up Commander commands (`mcp`, `auth`, `plugin`, `marketplace`, `setup-token`, etc.) and then runs `parseAsync(process.argv)`.
+
+6. **Session initialization**
+   - After parsing, the selected command/action initializes subsystems on-demand (config, auth, MCP, plugins, UI, telemetry).
+
+**Source (v2.1.42)**: In `@anthropic-ai/claude-code/cli.js`, search for `process.env.COREPACK_ENABLE_AUTO_PIN = "0"`, `startCapturingEarlyInput`, and `await q.parseAsync(process.argv)`.
 
 **Dependencies Loaded**:
 - File system utilities (fs, path)
@@ -587,7 +675,7 @@ Validating plugin manifest: /path/to/plugin.json
 
 #### Marketplace Commands Detail
 
-##### `claude marketplace add <source>`
+##### `claude plugin marketplace add <source>`
 
 Add a marketplace from various sources.
 
@@ -599,12 +687,12 @@ Add a marketplace from various sources.
 
 **Example**:
 ```bash
-claude marketplace add anthropics/claude-plugins
-claude marketplace add https://plugins.example.com/marketplace.json
-claude marketplace add ./local-marketplace
+claude plugin marketplace add anthropics/claude-plugins
+claude plugin marketplace add https://plugins.example.com/marketplace.json
+claude plugin marketplace add ./local-marketplace
 ```
 
-##### `claude marketplace list`
+##### `claude plugin marketplace list`
 
 List all configured marketplaces.
 
@@ -622,7 +710,7 @@ Configured marketplaces:
     Source: Directory (/Users/dev/my-plugins)
 ```
 
-##### `claude marketplace remove <name>`
+##### `claude plugin marketplace remove <name>`
 
 Remove a configured marketplace.
 
@@ -631,7 +719,7 @@ Remove a configured marketplace.
 - Does NOT uninstall plugins from that marketplace
 - Plugins remain but won't receive updates
 
-##### `claude marketplace update [name]`
+##### `claude plugin marketplace update [name]`
 
 Update marketplace(s) from their source.
 
@@ -740,7 +828,15 @@ interface DiagnosticResult {
 
 #### Update System
 
-**Function**: `LyQ()` (Line 3667)
+**Function**: Update System
+
+**Source (v2.1.42)**: In `@anthropic-ai/claude-code/cli.js`, search for `tengu_update_check` or `update: Starting update check`.
+
+**Key Features**:
+- Diagnostics: Detects installation type (npm-local, npm-global, native, package-manager, development)
+- Multi-installation detection: Warns if multiple installations found
+- Package manager support: Homebrew, npm, native installers
+- Auto-update channel support: latest/stable channels
 
 **Complete Update Flow**:
 
@@ -775,7 +871,7 @@ interface DiagnosticResult {
 ┌─────────────────────────────────────┐
 │   4. VERSION CHECK                  │
 ├─────────────────────────────────────┤
-│ • Check current version (2.0.22)    │
+│ • Check current version (v2.1.42)    │
 │ • Query npm registry for latest     │
 │ • Exit if already up-to-date        │
 └─────────────────────────────────────┘
@@ -834,7 +930,7 @@ type UpdateStatus =
 
 1. **success**
    ```
-   ✓ Successfully updated from 2.0.22 to version 2.1.0
+   ✓ Successfully updated from v2.1.42 to version 2.1.0
    ```
 
 2. **no_permissions**
@@ -1129,95 +1225,57 @@ z0.warning // ⚠
 
 ### MODULE 5: Authentication System
 
-#### OAuth Token System
+#### Overview
 
-**Command**: `claude setup-token`
+Claude Code supports multiple authentication surfaces:
 
-**Token Characteristics**:
-- **Lifetime**: 1 year
-- **Refresh**: Automatic (if configured)
-- **Storage**: Encrypted system keychain
-- **Scope**: Full API access
+1. **Anthropic account sign-in** via `claude auth ...` (browser-based OAuth flow)
+2. **Long-lived token setup** via `claude setup-token` (subscription-gated; optimized for long-lived use)
+3. **API key** via `ANTHROPIC_API_KEY` (environment-driven)
+4. **API key helper** / external credential sources (when configured)
+5. **Third-party managed credentials** (environment/provider-driven, depending on deployment)
 
-#### Authentication Flow
+The CLI exposes `claude auth status` to report which method is active and exits non-zero when no credentials are available.
 
-```
-1. User runs: claude setup-token
-        ↓
-2. Check for existing auth
-        ↓
-3. [If exists] Display warning
-        ↓
-4. Launch React UI
-        ↓
-5. Display welcome message
-        ↓
-6. Open browser for OAuth
-        ↓
-7. User authenticates with Anthropic
-        ↓
-8. OAuth callback with code
-        ↓
-9. Exchange code for token
-        ↓
-10. Store token securely
-        ↓
-11. Verify token works
-        ↓
-12. Confirm success
-```
+#### `claude auth login` / `status` / `logout`
 
-#### Auth Detection Priority
+These commands manage **Anthropic account sign-in**.
 
-The system checks for authentication in this order:
+- `claude auth login [--email <email>] [--sso]`
+  - Opens a browser to complete OAuth sign-in.
+  - `--email` pre-populates the login email address.
+  - `--sso` forces the SSO login flow.
+- `claude auth status [--json] [--text]`
+  - Default output is JSON (`--json` is explicit but default).
+  - `--text` prints a human-readable summary and hints (e.g., how to log in).
+  - Exit code is `0` when logged in, `1` when not logged in.
+- `claude auth logout`
+  - Clears stored account auth state and exits `0` on success.
 
-1. **OAuth Token** (from `setup-token`)
-   - Location: System keychain
-   - Priority: Highest
-   - Auto-refresh: Yes
+In addition to reporting a simple “logged in” boolean, `auth status` can surface metadata (when available) such as email/org/subscription details for Claude.ai-backed auth.
 
-2. **Environment Variable**
-   - Variable: `ANTHROPIC_API_KEY`
-   - Priority: Medium
-   - Auto-refresh: No
+**Source (v2.1.42)**: In `@anthropic-ai/claude-code/cli.js`, search for `q.command("auth")`, `authStatus:`, `authLogin:`, and `authLogout:`.
 
-3. **API Key Helper**
-   - External credential manager
-   - Priority: Lowest
-   - Auto-refresh: Depends on helper
+#### `claude setup-token` (long-lived token flow)
 
-**Function**: `w$()`
-```typescript
-function w$(): boolean;
-// Returns true if any auth is configured
-```
+`claude setup-token` is a separate flow intended to create a long-lived authentication token (the CLI describes it as requiring a Claude subscription).
 
-#### Existing Auth Warning
+High-level behavior:
+- Launches a guided OAuth flow (often with a TUI/React UI in the CLI)
+- Warns if other credential sources are already configured
+- Persists the resulting token for future sessions
 
-When running `setup-token` with existing auth:
+**Source (v2.1.42)**: In `@anthropic-ai/claude-code/cli.js`, search for `q.command("setup-token")` and `setup-token`.
 
-```
-Warning: You already have authentication configured via
-environment variable or API key helper.
+#### Credential storage and security
 
-The setup-token command will create a new OAuth token
-which you can use instead.
+Claude Code integrates with OS-level secret storage for sensitive credential material when available:
 
-Continue? [Y/n]
-```
+- macOS: Keychain
+- Windows: Windows Credential Manager
+- Linux: Secret Service (e.g., gnome-keyring / kwallet)
 
-#### Token Storage
-
-**Security Measures**:
-- Encrypted at rest
-- OS keychain integration (macOS Keychain, Windows Credential Manager, Linux Secret Service)
-- Never written to plaintext files
-- Access restricted to Claude Code process
-
-**Storage Location** (abstracted):
-- **macOS**: Keychain Access
-- **Windows**: Windows Credential Manager
-- **Linux**: Secret Service API (gnome-keyring, kwallet)
+Documentation should treat secret storage as an implementation-backed security boundary: tokens should not be written to plaintext config files, and the CLI should be able to recover gracefully if keychain access fails.
 
 ---
 
@@ -1502,36 +1560,85 @@ const result = await jzA(childProcess, {
 
 ### Command Categories
 
-1. **MCP Management** - 7 commands
-2. **Plugin Management** - 5 commands
+1. **MCP Management** - 8 commands
+2. **Plugin Management** - 6 commands
 3. **Marketplace Management** - 4 commands
-4. **System Utilities** - 5 commands
+4. **Authentication** - 3 commands
+5. **MCP Tools** - 7 commands
+6. **System Utilities** - 4 commands
+
+**Total**: 32 commands (v2.1.42 verified)
 
 ### All Commands
 
+#### MCP Management
+
 | Command | Description | Telemetry Event |
 |---------|-------------|----------------|
-| `mcp add` | Add MCP server | `tengu_mcp_add` |
-| `mcp remove` | Remove MCP server | - |
+| `mcp add <name> <commandOrUrl> [args...]` | Add MCP server (stdio) | `tengu_mcp_add` |
+| `mcp remove <name>` | Remove MCP server | - |
 | `mcp list` | List MCP servers | `tengu_mcp_list` |
-| `mcp get` | Get MCP server details | `tengu_mcp_get` |
-| `mcp add-json` | Add via JSON | `tengu_mcp_add` |
-| `mcp add-from-claude-desktop` | Import from desktop | `tengu_mcp_add` |
-| `mcp reset-project-choices` | Reset approvals | `tengu_mcp_reset_mcpjson_choices` |
-| `plugin install` | Install plugin | `tengu_plugin_install_command` |
-| `plugin uninstall` | Uninstall plugin | `tengu_plugin_uninstall_command` |
-| `plugin enable` | Enable plugin | `tengu_plugin_enable_command` |
-| `plugin disable` | Disable plugin | `tengu_plugin_disable_command` |
-| `plugin validate` | Validate manifest | - |
-| `marketplace add` | Add marketplace | `tengu_marketplace_added` |
+| `mcp get <name>` | Get MCP server details | `tengu_mcp_get` |
+| `mcp add-json <name> <json>` | Add MCP server via JSON | `tengu_mcp_add` |
+| `mcp add-from-claude-desktop` | Import from Claude Desktop | `tengu_mcp_add` |
+| `mcp reset-project-choices` | Reset project approvals | `tengu_mcp_reset_mcpjson_choices` |
+| `mcp serve` | Start Claude Code MCP server | - |
+
+#### Plugin Management
+
+| Command | Description | Telemetry Event |
+|---------|-------------|----------------|
+| `plugin install <plugin>` | Install plugin | `tengu_plugin_install_command` |
+| `plugin uninstall <plugin>` | Uninstall plugin | `tengu_plugin_uninstall_command` |
+| `plugin list` | List installed plugins | - |
+| `plugin enable <plugin>` | Enable plugin | `tengu_plugin_enable_command` |
+| `plugin disable [plugin]` | Disable plugin(s) | `tengu_plugin_disable_command` |
+| `plugin update <plugin>` | Update plugin | - |
+| `plugin validate <path>` | Validate plugin manifest | - |
+
+#### Marketplace Management
+
+| Command | Description | Telemetry Event |
+|---------|-------------|----------------|
+| `marketplace add <source>` | Add marketplace | `tengu_marketplace_added` |
 | `marketplace list` | List marketplaces | - |
-| `marketplace remove` | Remove marketplace | `tengu_marketplace_removed` |
-| `marketplace update` | Update marketplace(s) | `tengu_marketplace_updated*` |
-| `migrate-installer` | Migrate to local install | `tengu_migrate_installer_command` |
+| `marketplace remove <name>` | Remove marketplace | `tengu_marketplace_removed` |
+| `marketplace update [name]` | Update marketplace(s) | `tengu_marketplace_updated*` |
+
+#### Authentication
+
+| Command | Description | Telemetry Event |
+|---------|-------------|----------------|
+| `auth login` | Sign in to Anthropic account | - |
+| `auth status` | Show authentication status | - |
+| `auth logout` | Log out from account | - |
+
+#### MCP CLI (`mcp-cli`) (CLI-based tool interaction)
+
+| Command | Description | Telemetry Event |
+|---------|-------------|----------------|
+| `mcp-cli servers` | List all connected MCP servers | - |
+| `mcp-cli tools [server]` | List available tools | - |
+| `mcp-cli info <server>/<tool>` | Get tool details | - |
+| `mcp-cli call <server>/<tool> <args>` | Invoke MCP tool | - |
+| `mcp-cli grep <pattern>` | Search tool names/descriptions | - |
+| `mcp-cli resources [server]` | List MCP resources | - |
+| `mcp-cli read <server>/<resource> [uri]` | Read MCP resource | - |
+
+Notes:
+- `mcp-cli` is typically exposed as a wrapper around `claude --mcp-cli ...` (an internal entry mode in `sNz()`).
+- Some subcommands support `--json`, `--timeout <ms>`, and `--debug`. See the MCP integration reference for details.
+
+**Source (v2.1.42)**: In `@anthropic-ai/claude-code/cli.js`, search for `.name("mcp-cli")` and `if (A[0] === "--mcp-cli") {`.
+
+#### System Utilities
+
+| Command | Description | Telemetry Event |
+|---------|-------------|----------------|
 | `setup-token` | Set up OAuth token | `tengu_setup_token_command` |
 | `doctor` | Run diagnostics | `tengu_doctor_command` |
 | `update` | Check for updates | `tengu_update_check` |
-| `install` | Install native build | - |
+| `install [target]` | Install native build | - |
 
 ### Command Patterns
 
@@ -2448,8 +2555,8 @@ ls -la $(which claude)
 # Fix permissions
 chmod +x $(which claude)
 
-# Or migrate to local
-claude migrate-installer
+# Or reinstall via npm
+npm install -g @anthropic-ai/claude-code
 ```
 
 **Issue**: Config not loading
@@ -2568,10 +2675,10 @@ security find-generic-password -s "Claude Code"
 **Diagnosis**:
 ```bash
 # Check marketplace
-claude marketplace list
+claude plugin marketplace list
 
 # Update marketplace
-claude marketplace update
+claude plugin marketplace update
 
 # Validate plugin
 claude plugin validate /path/to/plugin.json
@@ -2580,7 +2687,7 @@ claude plugin validate /path/to/plugin.json
 **Solutions**:
 ```bash
 # Solution 1: Update marketplace
-claude marketplace update marketplace-name
+claude plugin marketplace update marketplace-name
 
 # Solution 2: Install from specific marketplace
 claude plugin install plugin@marketplace
@@ -2884,7 +2991,7 @@ grep -i error debug.log
 
 ### G. Version History
 
-**Version 2.0.22** (current)
+**Version v2.1.42** (current)
 - Complete MCP management system
 - Plugin marketplace support
 - Native updater integration

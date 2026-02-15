@@ -8,19 +8,19 @@ Generated: 2025-10-18T16:33:15.210Z
 
 These are the main system prompts used based on context:
 
-### Default (Claude Code) (`mOA`)
+### Default (Claude Code) (`e4A`)
 
 ```
 You are Claude Code, Anthropic's official CLI for Claude.
 ```
 
-### With SDK Context (`Nw9`)
+### With SDK Context (`UA7`)
 
 ```
 You are Claude Code, Anthropic's official CLI for Claude, running within the Claude Agent SDK.
 ```
 
-### Agent Mode (`dOA`)
+### Agent Mode (`pA7`)
 
 ```
 You are a Claude agent, built on Anthropic's Claude Agent SDK.

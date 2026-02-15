@@ -1258,7 +1258,7 @@ const responses = await Promise.all([
 // OLD (Claude Code SDK)
 import { claudeCode } from '@anthropic-ai/claude-code';
 
-// NEW (Claude Agent SDK)
+// Claude Agent SDK
 import { query } from '@anthropic-ai/claude-agent-sdk';
 
 // API is largely compatible

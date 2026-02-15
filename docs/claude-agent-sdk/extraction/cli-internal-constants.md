@@ -1,7 +1,7 @@
 # Claude Agent SDK - Internal Constants & Implementations
 
 **SDK Version**: 0.1.22
-**Source**: `cli.js` (9.7MB bundled JavaScript)
+**Source**: `@anthropic-ai/claude-code/cli.js` (bundled JavaScript)
 
 ---
 
@@ -14,6 +14,10 @@
 5. [Storage & Cache Limits](#storage--cache-limits)
 6. [UI & Display Constants](#ui--display-constants)
 7. [Error & Retry Configuration](#error--retry-configuration)
+8. [Bundle & Package Constants](#bundle--package-constants)
+9. [Performance Characteristics](#performance-characteristics)
+10. [Implementation Patterns](#implementation-patterns)
+11. [Key Observations](#key-observations)
 
 ---
 
@@ -23,35 +27,58 @@
 
 ```javascript
 // From cli.js
-const READ_DEFAULT_LINES = 2000;      // BG1 in cli.js
-const READ_CHAR_TRUNCATE = 2000;      // eE9 in cli.js - per line
-const PDF_MAX_SIZE = 33554432;        // UOA in cli.js (32MB)
+const READ_DEFAULT_LINES = 2000;      // XS1 in v2.1.42
+const READ_CHAR_TRUNCATE = 2000;      // yN5 in v2.1.42
+const PDF_MAX_SIZE = 20971520;        // tj1 in v2.1.42 (20MB)
 ```
+
+**Quick Reference (v2.1.42)**:
+- READ_DEFAULT_LINES: Search for `= 2000;` with "lines" in context
+  - Variable name: `XS1`
+- READ_CHAR_TRUNCATE: Search for `= 2000;` with "char" or "truncate" in context
+  - Variable name: `yN5`
+- PDF_MAX_SIZE: Search for `20971520` or `var tj1 =`
+  - Variable name: `tj1`
+  - Value: 20971520 (20MB, not 32MB as previously documented)
+  - Where to look: `@anthropic-ai/claude-code/cli.js` (search: `var tj1 = 20971520`)
 
 **Behavior**:
 - Default: Returns first 2000 lines
 - Line truncation: Each line truncated at 2000 characters
-- PDF limit: Maximum 32MB file size
+- PDF limit: Maximum **20MB** file size (corrected from 32MB)
 - Truncation is silent (no warning or ellipsis)
 
 **Use Cases Affected**:
 - Reading large files (must use offset/limit pagination)
 - Minified code (lines > 2000 chars truncated)
-- Large PDFs rejected
+- Large PDFs > 20MB rejected
 
 ### Bash Tool Limits
 
 ```javascript
-const BASH_DEFAULT_TIMEOUT = 120000;   // 2 minutes
-const BASH_MAX_TIMEOUT = 600000;       // 10 minutes
-const BASH_OUTPUT_TRUNCATE = 30000;    // characters
+const BASH_DEFAULT_TIMEOUT = 120000;   // wJY in v2.1.42 - 2 minutes
+const BASH_MAX_TIMEOUT = 600000;       // TP in v2.1.42 - 10 minutes
+const BASH_OUTPUT_TRUNCATE = 30000;    // EMY/lNY/etc. in v2.1.42 - characters
 ```
+
+**Quick Reference (v2.1.42)**:
+- BASH_DEFAULT_TIMEOUT: Search for `= 120000;`
+  - Variable name: `wJY`
+- BASH_MAX_TIMEOUT: Search for `= 600000;`
+  - Variable name: `TP`
+- BASH_OUTPUT_TRUNCATE: Search for `= 30000;` (multiple matches, check context)
+  - Possible variable names: `EMY`, `lNY`, `yTY`, etc.
 
 **Behavior**:
 - Default timeout: 2 minutes (120,000ms)
 - Maximum timeout: 10 minutes (600,000ms)
-- Output truncation: 30,000 combined characters (stdout + stderr)
-- Truncation is silent (no indicator)
+- Output truncation: Defaults to **30,000 characters**, configurable via `BASH_MAX_OUTPUT_LENGTH` (clamped to a max of **150,000**)
+- When output is truncated, an explicit marker is appended (e.g. `... [N lines truncated] ...`)
+
+**Configurability (env vars)**
+- `BASH_DEFAULT_TIMEOUT_MS`: sets the default timeout (must be a positive integer; defaults to `120000`)
+- `BASH_MAX_TIMEOUT_MS`: sets the maximum allowed timeout; if set, it is forced to be at least the default timeout; if not set, defaults to `max(600000, BASH_DEFAULT_TIMEOUT_MS)`
+- `BASH_MAX_OUTPUT_LENGTH`: sets the truncation threshold; effective range is `30000..150000`
 
 **Workarounds**:
 ```typescript
@@ -73,6 +100,11 @@ Bash({
 })
 // Then: Read({ file_path: "test-results.txt" })
 ```
+
+**Evidence / anchors**
+- Timeout defaults and env overrides: `@anthropic-ai/claude-code/cli.js` (search: `BASH_DEFAULT_TIMEOUT_MS`, `BASH_MAX_TIMEOUT_MS`)
+- Output truncation threshold: `@anthropic-ai/claude-code/cli.js` (search: `BASH_MAX_OUTPUT_LENGTH`)
+- Truncation marker behavior: `@anthropic-ai/claude-code/cli.js` (search: `... [${z} lines truncated] ...`)
 
 ### Grep Tool Defaults
 
@@ -109,6 +141,39 @@ const TODO_IN_PROGRESS_LIMIT = 1;  // Exactly one task
 - Must complete current task before starting next
 - No parallel task tracking allowed
 
+### Task Tool Output Truncation
+
+Task/subagent outputs are truncated before being displayed if they exceed a configurable character budget.
+
+```javascript
+const TASK_MAX_OUTPUT_LENGTH_DEFAULT = 32000;
+const TASK_MAX_OUTPUT_LENGTH_MAX = 160000;
+// Env override: TASK_MAX_OUTPUT_LENGTH
+```
+
+**Behavior**:
+- If output exceeds the limit, the displayed output includes a prefix like `[Truncated. Full output: <path>]` and then the tail of the output.
+- This truncation is separate from model output token limits; it is a local display/storage safeguard.
+
+**Evidence / anchors**
+- `@anthropic-ai/claude-code/cli.js` (search: `TASK_MAX_OUTPUT_LENGTH`, `[Truncated. Full output:`)
+
+### MCP Output Truncation
+
+MCP tool outputs are truncated based on a token budget.
+
+```javascript
+const MAX_MCP_OUTPUT_TOKENS_DEFAULT = 25000;
+// Env override: MAX_MCP_OUTPUT_TOKENS
+```
+
+**Behavior**:
+- When output exceeds the limit, a truncation notice is appended (e.g. `[OUTPUT TRUNCATED - exceeded <N> token limit]`).
+- Token accounting approximates characters as `tokens * 4` for some internal thresholds.
+
+**Evidence / anchors**
+- `@anthropic-ai/claude-code/cli.js` (search: `MAX_MCP_OUTPUT_TOKENS`, `[OUTPUT TRUNCATED`)
+
 ---
 
 ## Agent System Constants
@@ -116,7 +181,7 @@ const TODO_IN_PROGRESS_LIMIT = 1;  // Exactly one task
 ### Agent Colors
 
 ```javascript
-// From cli.js line 2614
+// From CLI bundle
 const AGENT_COLORS = [
   "red",
   "blue", 
@@ -195,14 +260,31 @@ const AGENT_CONTEXT_DEFAULTS = {
 ### Hook Timeout
 
 ```javascript
-const HOOK_DEFAULT_TIMEOUT = 5000;  // 5 seconds
+const HOOK_DEFAULT_TIMEOUT = 15000;  // 15 seconds (corrected from 5 seconds)
+```
+
+**Source (v2.1.42):** `@anthropic-ai/claude-code/cli.js` (search: `asyncTimeout || 15000`)
+
+**Behavior**:
+- Default **15 second** timeout for hooks (corrected from 5 seconds)
+- Configurable via `asyncTimeout` in hook configuration
+- Hook killed after timeout expires
+- No built-in retry mechanism
+
+### MCP Timeouts
+
+```javascript
+const MCP_TIMEOUT_DEFAULT = 30000;        // Env override: MCP_TIMEOUT
+const MCP_TOOL_TIMEOUT_DEFAULT = 100000000; // Env override: MCP_TOOL_TIMEOUT (effectively infinite)
 ```
 
 **Behavior**:
-- Default 5 second timeout for hooks
-- Configurable via `asyncTimeout` in AsyncHookJSONOutput
-- Hook killed after timeout expires
-- No built-in retry mechanism
+- `MCP_TIMEOUT` is used as a default timeout value for MCP connection/operations in parts of the MCP runtime.
+- `MCP_TOOL_TIMEOUT` is used as the default timeout for `mcp-cli` tool calls/reads when no explicit timeout is provided.
+
+**Evidence / anchors**
+- `@anthropic-ai/claude-code/cli.js` (search: `MCP_TIMEOUT`)
+- `@anthropic-ai/claude-code/cli.js` (search: `MCP_TOOL_TIMEOUT`, `TIMEOUT_100000000`)
 
 ### Conversation Limits
 
@@ -223,9 +305,9 @@ const HISTORY_RETENTION_LIMIT = 100;  // Prompt history stored
 ### Ultrathink Constants
 
 ```javascript
-// From cli.js line 1497
+// Variable names in v2.1.42
 const THINKING_TOKEN_LIMITS = {
-  ULTRATHINK: 31999,
+  ULTRATHINK: 31999,  // SBq in v2.1.42
   NONE: 0
 };
 
@@ -237,6 +319,12 @@ const ULTRATHINK_TRIGGERS = [
   "think ultrahard"
 ];
 ```
+
+**Quick Reference (v2.1.42)**:
+- ULTRATHINK_MAX: Search for `= 31999;`
+  - Variable name: `SBq`
+- ULTRATHINK_PATTERN: Search for `/\\bultrathink\\b/gi` or string "ultrathink"
+- Trigger keywords: Search for "think ultra hard" or "think ultrahard"
 
 **Detection Function**:
 ```javascript
@@ -250,17 +338,25 @@ function isUltrathinkTrigger(input) {
 }
 ```
 
-**Behavior**:
-- Maximum 31,999 thinking tokens for extended reasoning
-- Triggered by specific keywords in prompt
-- Case-insensitive pattern matching
-- Applied for single turn only (not persistent)
+**Deprecated in v2.1.42**:
+> **Important**: Ultrathink no longer has any effect. The thinking budget is now set to maximum by default for all requests.
+>
+> The CLI will show a deprecation warning if ultrathink keywords are used:
+> "Ultrathink no longer does anything. Thinking budget is now max by default."
 
-**Usage**:
-```
-ultrathink: analyze the security implications of this code
-think ultra hard: find the optimal algorithm
-```
+**Current Behavior** (v2.1.42):
+- All requests automatically use maximum thinking budget (31,999 tokens)
+- Ultrathink keywords are detected but ignored
+- A deprecation warning is displayed
+- No user action needed - extended thinking is always enabled
+
+**Overrides / switches**
+- `MAX_THINKING_TOKENS`: if set, overrides the thinking token budget used by the runtime.
+- `alwaysThinkingEnabled` setting: when explicitly set to `false`, disables “always thinking” behavior in the runtime’s thinking enablement checks.
+
+**Evidence / anchors**
+- Ultrathink deprecation notification: `@anthropic-ai/claude-code/cli.js` (search: `Ultrathink no longer does anything`)
+- Thinking budget override + always-thinking check: `@anthropic-ai/claude-code/cli.js` (search: `MAX_THINKING_TOKENS`, `alwaysThinkingEnabled`)
 
 ---
 
@@ -289,17 +385,43 @@ const SESSION_HISTORY_LIMIT = 100;  // Commands stored
     └── ...
 ```
 
-### Cache Configuration
+### File Checkpointing (Rewind)
+
+File checkpointing is the mechanism behind “rewind code” features (saving file snapshots that can be restored later).
 
 ```javascript
-const WEBFETCH_CACHE_DURATION = 900000;  // 15 minutes (900,000ms)
+// Env switch (global):
+//   CLAUDE_CODE_DISABLE_FILE_CHECKPOINTING=1  -> disables checkpointing
+//
+// Runtime setting key:
+//   fileCheckpointingEnabled (global setting)
 ```
 
 **Behavior**:
-- WebFetch uses 15-minute self-cleaning cache
-- Cache key: URL
-- Automatic cleanup after expiration
-- No manual cache invalidation API
+- When disabled, Claude Code does not record file checkpoints for rewind/restore workflows.
+- The feature is exposed as a global setting (`fileCheckpointingEnabled`) and can also be force-disabled via the environment variable.
+
+**Evidence / anchors**
+- Settings catalog: `@anthropic-ai/claude-code/cli.js` (search: `fileCheckpointingEnabled`)
+- Env gating in UI/runtime: `@anthropic-ai/claude-code/cli.js` (search: `CLAUDE_CODE_DISABLE_FILE_CHECKPOINTING`)
+
+### Cache Configuration
+
+```javascript
+const WEBFETCH_CACHE_TTL_MS = 900000;        // 15 minutes
+const WEBFETCH_CACHE_MAX_SIZE_BYTES = 52428800; // 50MB total
+```
+
+**Behavior**:
+- WebFetch caches fetched URL results in an in-memory cache keyed by the input URL.
+- Cache entries expire after 15 minutes, and the cache is size-bounded (50MB total, measured by `Buffer.byteLength(content)`).
+- `http://` URLs are automatically rewritten to `https://` before fetching.
+- `text/html` responses are converted to Markdown before being cached/returned.
+- By default, WebFetch runs a domain preflight allow/block check; this can be skipped via `skipWebFetchPreflight` (managed setting).
+
+**Evidence / anchors**
+- WebFetch cache TTL + max size + URL normalization + HTML conversion: `@anthropic-ai/claude-code/cli.js` (search: `ttl: TIMEOUT_900000`, `maxSize: TIMEOUT_52428800`, `protocol === \"http:\"`, `turndown`)
+- Preflight skip setting: `@anthropic-ai/claude-code/cli.js` (search: `skipWebFetchPreflight`)
 
 ---
 
@@ -360,6 +482,71 @@ const LOCK_RETRY_CONFIG = {
 - History file writes use file locks
 - Retry 3 times with exponential backoff
 - Lock considered stale after 10 seconds
+
+### HTTP Retry Policy (Network Requests)
+
+```javascript
+const HTTP_MAX_RETRIES_DEFAULT = 3;
+const HTTP_RETRY_DELAY_BASE_MS = 1000;
+const HTTP_MAX_RETRY_DELAY_MS = 64000;
+const RETRY_AFTER_HEADERS = ["retry-after-ms", "x-ms-retry-after-ms", "Retry-After"];
+```
+
+**Behavior**:
+- Default max retries is 3.
+- For throttling responses (notably HTTP 429 and 503), the client respects common retry-after headers.
+- For other retryable conditions (timeouts, connection errors, certain HTTP statuses like 408 and 5xx), an exponential backoff is applied with a base delay and a capped maximum delay.
+
+**Evidence / anchors**
+- Retry defaults and strategies: `@anthropic-ai/claude-code/cli.js` (search: `var yh1 = 3;`, `var dB5 = 1000;`, `var cB5 = 64000;`, `pB5 = [\"retry-after-ms\"`)
+- Retry policy orchestration: `@anthropic-ai/claude-code/cli.js` (search: `Retry ${_}: Attempting to send request`)
+
+### Rate Limit Handling (HTTP 429)
+
+When the API returns HTTP 429, Claude Code constructs a user-facing message and may include additional guidance when unified rate limit headers are present.
+
+**Notable headers**
+- `anthropic-ratelimit-unified-reset`
+- `anthropic-ratelimit-unified-representative-claim`
+- `anthropic-ratelimit-unified-overage-status`
+- `anthropic-ratelimit-unified-overage-reset`
+- `anthropic-ratelimit-unified-overage-disabled-reason`
+
+**Evidence / anchors**
+- `@anthropic-ai/claude-code/cli.js` (search: `status === 429`, `anthropic-ratelimit-unified-`)
+
+### Model Output Token Maximum
+
+Claude Code caps assistant output tokens and provides an environment variable override:
+
+```javascript
+// Env override: CLAUDE_CODE_MAX_OUTPUT_TOKENS
+```
+
+**Behavior**:
+- If a response exceeds the configured maximum, Claude Code emits a message instructing you to set `CLAUDE_CODE_MAX_OUTPUT_TOKENS` to configure the behavior.
+- The effective default and upper bound depend on the active model/provider and are clamped internally.
+
+**Evidence / anchors**
+- `@anthropic-ai/claude-code/cli.js` (search: `CLAUDE_CODE_MAX_OUTPUT_TOKENS`, `response exceeded`)
+
+### Telemetry and “Nonessential Traffic” Switches
+
+```javascript
+const OTEL_METRICS_EXPORT_INTERVAL_MS = 300000; // 5 minutes
+const OTEL_BATCH_DELAY_MS = 5000;
+// Primary enable: CLAUDE_CODE_ENABLE_TELEMETRY
+```
+
+**Behavior**:
+- OpenTelemetry exporters are enabled when `CLAUDE_CODE_ENABLE_TELEMETRY` is set (and other conditions permit).
+- In some environments/providers, telemetry may be disabled regardless of the enable flag (e.g. when using certain non-first-party providers or when `DISABLE_TELEMETRY` is set).
+- `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` disables various background/optional network behaviors (e.g. auto-updates, product feedback).
+
+**Evidence / anchors**
+- Telemetry enable flag + export interval: `@anthropic-ai/claude-code/cli.js` (search: `CLAUDE_CODE_ENABLE_TELEMETRY`, `exportIntervalMillis: 300000`)
+- “Nonessential traffic” gating: `@anthropic-ai/claude-code/cli.js` (search: `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`)
+- Telemetry disable conditions: `@anthropic-ai/claude-code/cli.js` (search: `DISABLE_TELEMETRY`, `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`)
 
 ### Model Deprecation Warnings
 

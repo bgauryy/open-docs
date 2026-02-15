@@ -20,7 +20,7 @@
 
 ## Executive Summary
 
-The Claude Agent SDK (formerly Claude Code SDK) is a comprehensive agentic framework that wraps Claude with file system operations, shell commands, MCP servers, and sophisticated permission/hook systems. This document covers undocumented features, implementation patterns, and gotchas found in the SDK.
+The Claude Agent SDK (formerly Claude Code SDK) is a comprehensive agentic framework that wraps Claude with file system operations, shell commands, MCP servers, and sophisticated permission/hook systems. This document covers undocumented features, implementation patterns, and gotchas found in the SDK and Claude Code runtime.
 
 **Key Findings:**
 - 9 hook events for lifecycle management (most undocumented)

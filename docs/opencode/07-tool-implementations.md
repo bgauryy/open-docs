@@ -329,7 +329,7 @@ This document covers the 20+ built-in tools that power OpenCode's file operation
 
 ---
 
-### websearch - Web Search (NEW in v1.0+)
+### websearch - Web Search (v1.0+)
 
 **Purpose**: Search the web using Exa AI-powered search API.
 
@@ -362,7 +362,7 @@ This document covers the 20+ built-in tools that power OpenCode's file operation
 
 ---
 
-### codesearch - Code Context Search (NEW in v1.0+)
+### codesearch - Code Context Search (v1.0+)
 
 **Purpose**: Search for code documentation, API references, and library examples.
 
@@ -397,7 +397,7 @@ This document covers the 20+ built-in tools that power OpenCode's file operation
 
 ---
 
-## Plan Mode Tools (NEW in v1.0+)
+## Plan Mode Tools (v1.0+)
 
 ### plan_enter - Enter Plan Mode
 

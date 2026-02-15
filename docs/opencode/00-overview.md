@@ -342,13 +342,13 @@ opencode auth login
 - Bash command execution
 - LSP diagnostics and hover
 - Task and TODO management
-- **Web search** (Exa AI-powered) - NEW
-- **Code search** (API/SDK documentation) - NEW
+- **Web search** (Exa AI-powered)
+- **Code search** (API/SDK documentation)
 - Web fetch for page content
 - Patch application and review
 - Plan mode tools (enter/exit)
 
-### 6. **Skills System** (NEW in v1.0+)
+### 6. **Skills System** (v1.0+)
 - Extensible skill discovery from `.opencode/skill/` and `.claude/skills/`
 - SKILL.md files with frontmatter metadata
 - Project-level and global skill support

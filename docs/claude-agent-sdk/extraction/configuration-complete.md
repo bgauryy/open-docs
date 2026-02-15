@@ -1,7 +1,12 @@
 # Claude Agent SDK - Configuration Complete Reference
 
-**SDK Version**: 0.1.22
-**Source**: `sdkTypes.d.ts`
+**SDK Version**: 0.1.22  
+**Claude Code Runtime**: v2.1.42  
+**Primary Sources**:
+- SDK types: `sdkTypes.d.ts`
+- Claude Code runtime (v2.1.42): `@anthropic-ai/claude-code/cli.js` (distributed bundle)
+
+Note: The Agent SDK ultimately runs a Claude Code executable. Settings, CLI flags, and runtime behavior depend on the Claude Code version you run (see `comprehensive-guide.md` for `pathToClaudeCodeExecutable`).
 
 ---
 
@@ -21,25 +26,23 @@
 
 ## Overview
 
-The Claude Agent SDK uses a **multi-level configuration system** with 6 resolution sources:
+Claude Code (and therefore the Agent SDK) uses a layered configuration system. Settings come from several sources and are merged with precedence; higher-precedence sources override lower-precedence ones for most keys.
 
 ```
-CLI Flags (highest priority)
+Enterprise managed settings (policy; can constrain or override)
      ↓
-Session Settings (in-memory, temporary)
+CLI flags and SDK options (per run/session)
      ↓
-Local Settings (.claude/ in cwd)
+Local settings (.claude/settings.local.json)
      ↓
-Project Settings (.claude/ in git root)
+Project settings (.claude/settings.json)
      ↓
-User Settings (~/.claude/)
+User settings (~/.claude/settings.json)
      ↓
-Policy Settings (enterprise)
-     ↓
-Default Values (lowest priority)
+Defaults (lowest priority)
 ```
 
-**First match wins** - Once a setting is found at any level, resolution stops.
+Important MCP note: project-shared MCP servers are configured via `.mcp.json` (not `.claude/settings.json`) and require per-user approval. Dynamic MCP servers can be loaded via `--mcp-config`. See `extraction/mcp-integration-complete.md` for details.
 
 ---
 
@@ -48,259 +51,123 @@ Default Values (lowest priority)
 ### Directory Structure
 
 ```
-~/.claude/                          # User settings (global)
-├── settings.json                   # User configuration
-├── sessions/                       # Session storage
-│   ├── <session-id-1>/
-│   │   ├── transcript.json        # Conversation history
-│   │   ├── checkpoints/           # Auto-checkpoints
-│   │   │   ├── checkpoint-0.json
-│   │   │   ├── checkpoint-5.json
-│   │   │   └── checkpoint-10.json
-│   │   └── file-snapshots/        # File content snapshots
-│   │       ├── <hash-1>.txt
-│   │       └── <hash-2>.txt
-│   └── <session-id-2>/
-│       └── ...
-├── history.jsonl                   # Command history
-└── cache/                          # Cache storage
-    └── mcp/                        # MCP cache
+~/.claude/                          # User-global Claude Code data
+├── settings.json                   # User settings (shared across projects)
+├── CLAUDE.md                       # User memory/rules
+├── agents/                         # Personal custom agents
+├── skills/                         # Personal skills
+├── plugins/                        # Plugin cache + metadata
+└── projects/<project-id>/          # Per-project state (transcripts, auto-memory, etc.)
 
-<git-root>/.claude/                 # Project settings (team, committed)
-├── settings.json                   # Project configuration
-└── skills/                         # Project skills
-    └── <skill-name>/
-        └── SKILL.md
+<repo-root>/                        # Your project / repo
+├── .claude/
+│   ├── settings.json               # Project settings (committed)
+│   ├── settings.local.json         # Local overrides (gitignored; per-user)
+│   ├── agents/                     # Project custom agents
+│   └── skills/                     # Project skills
+└── .mcp.json                       # Project-shared MCP servers (approval-gated)
 
-<cwd>/.claude/                      # Local settings (gitignored)
-├── settings.json                   # Local configuration
-└── skills/                         # Local skills (personal)
-
-/etc/claude/                        # Policy settings (enterprise, optional)
-└── settings.json                   # Organization-wide config
+<managed>                           # Enterprise-managed (location varies)
+├── managed-settings.json           # Managed settings (policy)
+└── managed-mcp.json                # Managed MCP servers (enterprise MCP config)
 ```
 
 ### File Locations by Precedence
 
 | Level | Location | Scope | Persisted | Shared |
-|-------|----------|-------|-----------|--------|
-| **CLI Flags** | Command line | Current session | No | No |
-| **Session** | In-memory | Current session | No | No |
-| **Local** | `<cwd>/.claude/` | Local directory | Yes | No (gitignored) |
-| **Project** | `<git-root>/.claude/` | Git repository | Yes | Yes (committed) |
-| **User** | `~/.claude/` | User global | Yes | No |
-| **Policy** | `/etc/claude/` | Enterprise-wide | Yes | Yes (managed) |
-| **Default** | SDK | SDK default | No | N/A |
+|---|---|---|---|---|
+| **Managed** | `managed-settings.json` | Organization policy | Yes | Yes (managed) |
+| **CLI Flags / SDK options** | Command line / SDK call | Current run/session | No | No |
+| **Local** | `.claude/settings.local.json` | Current working directory | Yes | No (gitignored) |
+| **Project** | `.claude/settings.json` | Repo/project | Yes | Yes (committed) |
+| **User** | `~/.claude/settings.json` | User global | Yes | No |
+| **Default** | Claude Code defaults | Built-in | No | N/A |
+
+Notes:
+- Windows managed settings may exist at `C:\\Program Files\\ClaudeCode\\managed-settings.json` (legacy: `C:\\ProgramData\\ClaudeCode\\managed-settings.json`).
+- MCP server configuration is split: user/local MCP servers can live under `mcpServers` in `settings.json` files, but project-shared MCP servers live in `.mcp.json` and are approval-gated.
 
 ---
 
 ## Settings Resolution Order
 
-### Resolution Algorithm
+### Merge model (conceptual)
 
-```typescript
-function resolveConfig<T>(key: string): T {
-  // 1. CLI flags (highest priority)
-  if (cliFlags.has(key)) return cliFlags.get(key);
-  
-  // 2. Session settings (temporary, in-memory)
-  if (sessionSettings.has(key)) return sessionSettings.get(key);
-  
-  // 3. Local settings (.claude/ in cwd)
-  if (localSettings.has(key)) return localSettings.get(key);
-  
-  // 4. Project settings (.claude/ in git root)
-  if (projectSettings.has(key)) return projectSettings.get(key);
-  
-  // 5. User settings (~/.claude/)
-  if (userSettings.has(key)) return userSettings.get(key);
-  
-  // 6. Policy settings (enterprise)
-  if (policySettings.has(key)) return policySettings.get(key);
-  
-  // 7. Default value
-  return DEFAULT_CONFIG[key];
-}
+Claude Code loads settings from enabled sources and merges them. For most scalar keys, the later (higher-precedence) value overrides earlier ones; some keys (notably permissions and hooks) have additional managed-policy behavior.
+
+Conceptually:
+
+```ts
+effective = merge(
+  defaults,
+  userSettings,            // ~/.claude/settings.json
+  projectSettings,         // .claude/settings.json
+  localSettings,           // .claude/settings.local.json
+  flagSettings,            // CLI flags (and --settings file/json)
+  policySettings           // managed-settings.json (enterprise policy)
+)
 ```
 
-### Example Resolution
-
-```typescript
-// Scenario: permissionMode setting
-
-// CLI flag
---permission-mode acceptEdits  // ← Wins (highest priority)
-
-// Session setting (if no CLI flag)
-sessionSettings.permissionMode = "bypassPermissions"
-
-// Local setting (if no CLI flag or session)
-<cwd>/.claude/settings.json:
-{ "permissionMode": "default" }
-
-// Project setting (if none above)
-<git-root>/.claude/settings.json:
-{ "permissionMode": "acceptEdits" }
-
-// User setting (if none above)
-~/.claude/settings.json:
-{ "permissionMode": "default" }
-
-// Policy setting (if none above)
-/etc/claude/settings.json:
-{ "permissionMode": "default" }
-
-// Default (if no settings anywhere)
-DEFAULT_PERMISSION_MODE = "default"
-```
+Notes:
+- `--setting-sources user,project,local` can restrict which filesystem sources are loaded. Managed settings and CLI flags still apply.
+- Managed settings can *constrain* other sources (e.g., “only managed hooks” or “only managed permission rules”), even if those other sources would otherwise have higher precedence.
 
 ---
 
 ## Settings Schema
 
-### Complete settings.json Schema
+### settings.json schema and validation
 
-```typescript
-interface Settings {
-  // Permission Configuration
-  permissions?: {
-    mode?: PermissionMode;           // 'default' | 'acceptEdits' | 'bypassPermissions' | 'plan'
-    rules?: PermissionRule[];        // Permission rules
-  };
-  
-  // MCP Server Configuration
-  mcpServers?: Record<string, McpServerConfig>;
-  
-  // Agent Configuration
-  agents?: Record<string, AgentDefinition>;
-  
-  // Tool Configuration
-  allowedTools?: string[];           // Tool whitelist
-  disallowedTools?: string[];        // Tool blacklist
-  
-  // Model Configuration
-  defaultModel?: string;             // Default model ID
-  fallbackModel?: string;            // Fallback model
-  
-  // Session Configuration
-  maxTurns?: number;                 // Max conversation turns
-  maxThinkingTokens?: number;        // Extended thinking limit
-  
-  // Directory Access
-  additionalDirectories?: string[];  // Extra permitted directories
-  
-  // UI Configuration
-  statusLine?: StatusLineConfig;     // Status line settings
-  outputStyle?: OutputStyleConfig;   // Output formatting
-  
-  // Feature Flags
-  strictMcpConfig?: boolean;         // Strict MCP validation
-  
-  // Hook Configuration
-  hooks?: HookConfig;                // Hook definitions
-}
+Claude Code validates `settings.json` against a JSON Schema (the runtime references `https://json.schemastore.org/claude-code-settings.json`). The schema is large and evolves with the runtime; treat the schema (and the v2.1.42 docs in this folder) as the authoritative source of truth.
+
+At a high level, v2.1.42 settings commonly include:
+
+```ts
+type SettingsJson = {
+  $schema?: string;
+
+  // Core behavior
+  model?: string;
+  fallbackModel?: string;
+  availableModels?: string[];
+  agent?: string;                 // selects an agent (built-in or custom)
+
+  // Permissions + hooks (detailed shapes documented elsewhere)
+  permissions?: unknown;          // see hooks-permissions-complete.md
+  hooks?: unknown;                // see hooks-permissions-complete.md
+
+  // Plugins
+  enabledPlugins?: Record<string, boolean | string[] | undefined>;
+  extraKnownMarketplaces?: Record<string, unknown>;
+
+  // Retention and memory controls
+  cleanupPeriodDays?: number;
+  autoMemoryEnabled?: boolean;
+
+  // MCP approval + enterprise policy controls (used with .mcp.json)
+  enableAllProjectMcpServers?: boolean;
+  enabledMcpjsonServers?: string[];
+  disabledMcpjsonServers?: string[];
+  allowedMcpServers?: unknown;
+  deniedMcpServers?: unknown;
+} & Record<string, unknown>;
 ```
+
+Notes:
+- Custom agents are defined on disk (project: `.claude/agents/`, personal: `~/.claude/agents/`). The `agent` setting selects which agent to use by default.
+- Project-shared MCP servers are configured in `.mcp.json`, not in `.claude/settings.json` (see `extraction/mcp-integration-complete.md`).
+- Auth-related settings exist (for enterprise or advanced setups), such as `forceLoginMethod`, `forceLoginOrgUUID`, and helpers like `apiKeyHelper`. Use `claude auth status` to confirm what authentication source is active.
+- Plugins can declare LSP server configurations via `lspServers` in their manifest (including `.lsp.json` files). See `../lsp.md`.
 
 ### settings.json Example (Complete)
 
 ```json
 {
-  "permissions": {
-    "mode": "acceptEdits",
-    "rules": [
-      {
-        "tool": "Bash",
-        "command": "npm test",
-        "behavior": "allow",
-        "reason": "Always allow running tests"
-      },
-      {
-        "tool": "Write",
-        "path": "src/**",
-        "behavior": "allow",
-        "reason": "Allow source file edits"
-      },
-      {
-        "tool": "Delete",
-        "behavior": "deny",
-        "reason": "Never auto-delete"
-      }
-    ]
-  },
-  
-  "mcpServers": {
-    "filesystem": {
-      "transport": "stdio",
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
-    },
-    "github": {
-      "transport": "stdio",
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"],
-      "env": {
-        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
-      }
-    }
-  },
-  
-  "agents": {
-    "code-reviewer": {
-      "description": "Reviews code for quality and security",
-      "tools": ["Read", "Grep", "Bash(git*)"],
-      "prompt": "You are a code reviewer. Check for security issues, bugs, and style violations.",
-      "model": "sonnet"
-    },
-    "test-generator": {
-      "description": "Generates unit tests",
-      "tools": ["Read", "Write", "Grep"],
-      "prompt": "Generate comprehensive unit tests with edge cases.",
-      "model": "haiku"
-    }
-  },
-  
-  "allowedTools": [
-    "Read",
-    "Write",
-    "Edit",
-    "Glob",
-    "Grep",
-    "Bash",
-    "Task"
-  ],
-  
-  "disallowedTools": [
-    "Delete",
-    "WebSearch"
-  ],
-  
-  "defaultModel": "claude-3-5-sonnet-20241022",
-  "fallbackModel": "claude-3-5-haiku-20241022",
-  
-  "maxTurns": 100,
-  "maxThinkingTokens": 10000,
-  
-  "additionalDirectories": [
-    "/tmp/workspace",
-    "/home/user/other-project"
-  ],
-  
-  "strictMcpConfig": true,
-  
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "script": "./hooks/validate-bash.js"
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "*",
-        "script": "./hooks/log-tool-usage.js"
-      }
-    ]
-  }
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "model": "sonnet",
+  "fallbackModel": "sonnet",
+  "agent": "default",
+  "cleanupPeriodDays": 30
 }
 ```
 
@@ -308,33 +175,32 @@ interface Settings {
 
 ## Environment Variables
 
-### Core Environment Variables
+Claude Code uses environment variables for authentication, provider selection, operational limits, and feature flags. For the vetted list and defaults (v2.1.42), see `extraction/cli-internal-constants.md`.
+
+### Common environment variables (v2.1.42)
 
 ```bash
-# API Authentication
-ANTHROPIC_API_KEY="sk-ant-..."           # Required: Anthropic API key
+# Authentication
+ANTHROPIC_API_KEY="sk-ant-..."           # API-key auth (Console / API-key workflows)
+CLAUDE_CODE_OAUTH_TOKEN="..."            # OAuth token (when applicable)
 
-# Model Selection
-ANTHROPIC_MODEL="claude-3-5-sonnet-20241022"  # Override default model
+# Model selection (optional)
+ANTHROPIC_MODEL="sonnet"
 
-# Debugging
-DEBUG="claude:*"                         # Enable debug logging
-DEBUG="claude:tools"                     # Tool execution only
-DEBUG="claude:mcp"                       # MCP only
+# Debug/logging + UX
+DEBUG="claude:*"
+NO_COLOR=1
 
-# Terminal Configuration
-NO_COLOR=1                               # Disable colored output
-TERM="xterm-256color"                    # Terminal type
-SHELL="/bin/zsh"                         # Shell for Bash tool
+# MCP timeouts and MCP CLI enablement
+MCP_TIMEOUT=30000
+MCP_TOOL_TIMEOUT=100000000
+ENABLE_EXPERIMENTAL_MCP_CLI=1
 
-# MCP Configuration
-MCP_SERVER_TIMEOUT=30000                 # MCP connection timeout (ms)
-
-# Cache Configuration
-CLAUDE_CACHE_DIR="~/.claude/cache"       # Cache directory
-
-# Feature Flags
-CLAUDE_EXPERIMENTAL_FEATURES=1           # Enable experimental features
+# Tool / output limits
+MAX_MCP_OUTPUT_TOKENS=25000
+BASH_DEFAULT_TIMEOUT_MS=120000
+# BASH_MAX_TIMEOUT_MS defaults to max(600000, BASH_DEFAULT_TIMEOUT_MS) when unset
+BASH_MAX_OUTPUT_LENGTH=30000
 ```
 
 ### Environment Variable Usage
@@ -343,103 +209,72 @@ CLAUDE_EXPERIMENTAL_FEATURES=1           # Enable experimental features
 
 ```bash
 # One-time (current command)
-ANTHROPIC_API_KEY="sk-ant-..." claude-code
+ANTHROPIC_API_KEY="sk-ant-..." claude
 
 # Session (current shell)
 export ANTHROPIC_API_KEY="sk-ant-..."
 export DEBUG="claude:*"
-claude-code
+claude
 
 # Permanent (add to ~/.bashrc, ~/.zshrc, etc.)
 echo 'export ANTHROPIC_API_KEY="sk-ant-..."' >> ~/.zshrc
 source ~/.zshrc
 ```
 
-**`.env` File Support** (if supported):
-
-```bash
-# .env in project root or cwd
-ANTHROPIC_API_KEY=sk-ant-...
-ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
-DEBUG=claude:tools
-```
+Claude Code does not automatically load `.env` files; set environment variables in your shell, CI environment, or a wrapper script.
 
 ---
 
 ## CLI Flags
 
-### Complete CLI Flag Reference
+Claude Code’s CLI is exposed as `claude` (v2.1.42). Run `claude --help` for the full list; below are the configuration-related flags and subcommands you most commonly need.
+
+### Common configuration flags (v2.1.42)
 
 ```bash
-# Session Management
-claude-code                              # Start new session
-claude-code --resume <session-id>       # Resume session
-claude-code --fork-session <session-id> # Fork (copy) session
-claude-code --resume-session-at <msg-id> # Resume from specific message
+# Settings sources
+claude --settings <file-or-json>                 # load extra settings from a JSON file or JSON string
+claude --setting-sources user,project,local      # restrict which filesystem sources load
 
-# Model Configuration
-claude-code --model opus                 # Use Opus model
-claude-code --model sonnet               # Use Sonnet (default)
-claude-code --model haiku                # Use Haiku
+# Model selection
+claude --model sonnet
+claude --fallback-model sonnet
 
-# Permission Configuration
-claude-code --permission-mode default
-claude-code --permission-mode acceptEdits
-claude-code --permission-mode bypassPermissions
-claude-code --permission-mode plan
+# Permissions / tools
+claude --permission-mode <mode>                  # see hooks-permissions-complete.md
+claude --allowed-tools <tools...>
+claude --disallowed-tools <tools...>
+claude --tools <tools...>                        # built-in tool set selection
 
-# Tool Configuration
-claude-code --allowed-tools Read,Write,Bash
-claude-code --disallowed-tools Delete,WebSearch
+# Directory access (adds to permission scope)
+claude --add-dir <directories...>
 
-# Directory Access
-claude-code --cwd /path/to/project
-claude-code --additional-directories /tmp,/home/user/other
+# MCP dynamic config
+claude --mcp-config <configs...>                 # JSON strings or JSON file paths (each must contain { "mcpServers": { ... } })
+claude --strict-mcp-config                       # only use MCP servers from --mcp-config
 
-# Conversation Limits
-claude-code --max-turns 50               # Max 50 turns
-claude-code --max-thinking-tokens 20000  # Extended thinking limit
-
-# MCP Configuration
-claude-code --strict-mcp-config          # Strict MCP validation
-claude-code --mcp-server-timeout 60000   # MCP timeout (ms)
-
-# Debugging
-claude-code --debug                      # Enable debug mode
-claude-code --verbose                    # Verbose output
-
-# Output Configuration
-claude-code --no-color                   # Disable colors
-claude-code --output-format json         # JSON output
+# Session management
+claude --continue
+claude --resume [session-id-or-search]
+claude --fork-session                            # used with --resume/--continue to fork to a new session id
 ```
 
-### CLI Flag Examples
+### Configuration subcommands (v2.1.42)
 
-**Example 1: Rapid Development Mode**:
 ```bash
-claude-code \
-  --permission-mode acceptEdits \
-  --model haiku \
-  --allowed-tools Read,Write,Edit,Grep,Glob,Bash \
-  --max-thinking-tokens 5000
-```
+# Auth
+claude auth login
+claude auth status
+claude auth logout
+claude setup-token
 
-**Example 2: Secure Review Mode**:
-```bash
-claude-code \
-  --permission-mode plan \
-  --allowed-tools Read,Grep,Glob \
-  --cwd /path/to/code
-```
+# MCP server management (persisted config)
+claude mcp list
+claude mcp add <name> <commandOrUrl> [args...]
 
-**Example 3: CI/CD Mode**:
-```bash
-claude-code \
-  --permission-mode bypassPermissions \
-  --model haiku \
-  --max-turns 10 \
-  --no-color \
-  --output-format json
+# Plugins
+claude plugin list
+claude plugin marketplace list
 ```
 
 ---
@@ -448,98 +283,27 @@ claude-code \
 
 ### SDK Options Interface
 
-```typescript
-import { query } from '@anthropic-ai/claude-agent-sdk';
+The SDK `query({ prompt, options })` forwards most configuration through to the Claude Code executable it runs. The authoritative typing surface is `sdkTypes.d.ts`.
 
-const result = await query({
-  prompt: "Your task here",
-  options: {
-    // API Configuration
-    apiKey?: string;                     // API key (overrides env)
-    
-    // Model Configuration
-    model?: string;                      // Model ID
-    fallbackModel?: string;              // Fallback model
-    maxThinkingTokens?: number;          // Extended thinking limit
-    
-    // Permission Configuration
-    permissionMode?: PermissionMode;
-    permissions?: PermissionRule[];
-    additionalDirectories?: string[];
-    
-    // Tool Configuration
-    allowedTools?: string[];
-    disallowedTools?: string[];
-    
-    // Agent Configuration
-    agents?: Record<string, AgentDefinition>;
-    
-    // MCP Configuration
-    mcpServers?: Record<string, McpServerConfig>;
-    strictMcpConfig?: boolean;
-    
-    // Session Configuration
-    maxTurns?: number;
-    forkSession?: string;                // Fork from session ID
-    resumeSessionAt?: string;            // Resume at message ID
-    
-    // Hook Configuration
-    hooks?: Record<HookEvent, HookCallbackMatcher[]>;
-    
-    // System Prompt Configuration
-    systemPrompt?: string | {
-      type: 'preset';
-      preset: 'claude_code';
-      append?: string;
-    };
-    
-    // Feature Flags
-    includePartialMessages?: boolean;
-    executableRuntime?: 'node' | 'bun' | 'deno';
-  }
-});
-```
+Commonly used `options` keys include:
+- `model`, `fallbackModel`, `maxThinkingTokens`, `maxTurns`
+- `permissionMode`, `permissionPromptToolName`
+- `allowedTools`, `disallowedTools`, `tools`
+- `additionalDirectories`
+- `hooks`
+- `mcpServers`, `strictMcpConfig`
+- `resume`, `forkSession`, `resumeSessionAt`, `includePartialMessages`
+- `betas`
+- `pathToClaudeCodeExecutable`
+- `appendSystemPrompt`
+- `executable`, `executableArgs`
+- `stderr` (callback)
 
-### Programmatic Configuration Examples
+Notes:
+- The SDK types can lag behind the runtime CLI flags; treat the Claude Code v2.1.42 docs in this folder as the authoritative runtime surface.
+- Custom agents are primarily configured via `.claude/agents/` (project) and `~/.claude/agents/` (personal), or via CLI flags (runtime). They are not represented as a structured `options.agents` object in `sdkTypes.d.ts`.
 
-**Example 1: Custom Agent with Hooks**:
-
-```typescript
-const result = await query({
-  prompt: "Analyze the codebase",
-  options: {
-    model: 'claude-3-5-sonnet-20241022',
-    permissionMode: 'acceptEdits',
-    
-    agents: {
-      'analyzer': {
-        description: 'Code analysis specialist',
-        tools: ['Read', 'Grep', 'Glob'],
-        prompt: 'Analyze code quality, performance, and security',
-        model: 'sonnet'
-      }
-    },
-    
-    hooks: {
-      PreToolUse: [{
-        hooks: [async (input) => {
-          console.log(`Tool: ${input.tool_name}`);
-          return { decision: 'approve' };
-        }]
-      }],
-      
-      PostToolUse: [{
-        hooks: [async (input) => {
-          console.log(`Result: ${input.tool_response}`);
-          return {};
-        }]
-      }]
-    }
-  }
-});
-```
-
-**Example 2: MCP Integration**:
+### Programmatic Configuration Example: MCP Integration
 
 ```typescript
 const result = await query({
@@ -547,13 +311,13 @@ const result = await query({
   options: {
     mcpServers: {
       'filesystem': {
-        transport: 'stdio',
+        type: 'stdio',
         command: 'npx',
         args: ['-y', '@modelcontextprotocol/server-filesystem', '/workspace']
       },
       'web-fetch': {
-        transport: 'http',
-        url: 'http://localhost:3000/mcp'
+        type: 'http',
+        url: 'https://example.com/mcp'
       }
     },
     strictMcpConfig: true
@@ -567,147 +331,62 @@ const result = await query({
 
 ### Example 1: Team Project Configuration
 
-**File**: `.claude/settings.json` (git root, committed)
+**File**: `.claude/settings.json` (repo root, committed)
+
+Keep this file small and team-safe. Prefer documenting sensitive values as environment variables and using policy/permissions docs for higher-risk settings.
 
 ```json
 {
-  "permissions": {
-    "mode": "default",
-    "rules": [
-      {
-        "tools": ["Read", "Glob", "Grep"],
-        "behavior": "allow",
-        "reason": "Safe discovery always allowed"
-      },
-      {
-        "tool": "Write",
-        "paths": ["src/**/*.ts", "tests/**/*.ts"],
-        "behavior": "allow",
-        "reason": "TypeScript source and tests"
-      },
-      {
-        "tool": "Write",
-        "path": "package.json",
-        "behavior": "ask",
-        "reason": "Confirm dependency changes"
-      },
-      {
-        "tool": "Bash",
-        "command": "npm test",
-        "behavior": "allow",
-        "reason": "Safe to run tests"
-      },
-      {
-        "tool": "Bash",
-        "command": "npm run lint",
-        "behavior": "allow",
-        "reason": "Safe to run linter"
-      },
-      {
-        "tool": "Delete",
-        "behavior": "deny",
-        "reason": "Never auto-delete files"
-      }
-    ]
-  },
-  
-  "agents": {
-    "test-generator": {
-      "description": "Generate Jest tests",
-      "tools": ["Read", "Write", "Grep"],
-      "prompt": "Generate Jest tests following project conventions",
-      "model": "sonnet"
-    }
-  },
-  
-  "defaultModel": "claude-3-5-sonnet-20241022",
-  "fallbackModel": "claude-3-5-haiku-20241022",
-  
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "model": "sonnet",
+  "cleanupPeriodDays": 30,
+  "enabledPlugins": {
+    "formatter@anthropic-tools": true
+  }
+}
+```
+
+### Example 2: Local Overrides (per-user, gitignored)
+
+**File**: `.claude/settings.local.json` (repo root, gitignored)
+
+```json
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "cleanupPeriodDays": 0,
+  "autoMemoryEnabled": false
+}
+```
+
+### Example 3: User Defaults
+
+**File**: `~/.claude/settings.json`
+
+```json
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "model": "sonnet",
+  "cleanupPeriodDays": 30
+}
+```
+
+### Example 4: Project-shared MCP servers
+
+**File**: `.mcp.json`
+
+```json
+{
   "mcpServers": {
-    "github": {
-      "transport": "stdio",
+    "filesystem": {
+      "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"],
-      "env": {
-        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
-      }
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
     }
   }
 }
 ```
 
-### Example 2: Personal User Configuration
-
-**File**: `~/.claude/settings.json` (user global)
-
-```json
-{
-  "permissions": {
-    "mode": "acceptEdits"
-  },
-  
-  "agents": {
-    "quick-search": {
-      "description": "Fast codebase search",
-      "tools": ["Glob", "Grep", "Read"],
-      "prompt": "Search quickly and summarize findings",
-      "model": "haiku"
-    }
-  },
-  
-  "defaultModel": "claude-3-5-sonnet-20241022",
-  
-  "additionalDirectories": [
-    "/Users/me/workspace",
-    "/tmp/scratch"
-  ]
-}
-```
-
-### Example 3: Enterprise Policy Configuration
-
-**File**: `/etc/claude/settings.json` (managed)
-
-```json
-{
-  "permissions": {
-    "mode": "default",
-    "rules": [
-      {
-        "tool": "Bash",
-        "command": "*prod*",
-        "behavior": "deny",
-        "reason": "No production access"
-      },
-      {
-        "tool": "Bash",
-        "command": "*production*",
-        "behavior": "deny",
-        "reason": "No production access"
-      },
-      {
-        "tool": "WebFetch",
-        "behavior": "deny",
-        "reason": "No external web access"
-      },
-      {
-        "tool": "WebSearch",
-        "behavior": "deny",
-        "reason": "No web search access"
-      }
-    ]
-  },
-  
-  "strictMcpConfig": true,
-  
-  "maxThinkingTokens": 10000,
-  
-  "disallowedTools": [
-    "WebFetch",
-    "WebSearch"
-  ]
-}
-```
+Project-shared `.mcp.json` servers require per-user approval before they are used; approvals are tracked in local settings (see `extraction/mcp-integration-complete.md`).
 
 ---
 
@@ -716,20 +395,12 @@ const result = await query({
 ### Gotchas
 
 1. **Settings Not Hot-Reloaded**:
-   - Changing settings.json requires restart
-   - Session settings cleared on exit
+   - Many settings are evaluated at startup; restart Claude Code (or re-run the SDK call) after edits to be safe.
+   - CLI flags and SDK options apply only to the current run/session.
 
 2. **Precedence Can Be Confusing**:
-   ```json
-   // User settings (~/.claude/)
-   { "permissionMode": "bypassPermissions" }
-   
-   // Project settings (.claude/ in git root)
-   { "permissionMode": "default" }
-   
-   // Result: User setting wins (higher precedence)
-   // Project setting ignored!
-   ```
+   - For filesystem settings, the typical override order is: user → project → local → CLI flags → managed policy.
+   - `--setting-sources user,project,local` can hide a layer entirely (by not loading it).
 
 3. **Environment Variable Substitution**:
    ```json
@@ -743,8 +414,8 @@ const result = await query({
      }
    }
    ```
-   - Variables must exist in environment
-   - No default value syntax
+   - `${VAR}` and `${VAR:-default}` are supported where MCP config expands variables.
+   - Missing variables typically produce warnings during config load (not hard failures).
 
 4. **Path Separators Platform-Specific**:
    ```json
@@ -755,41 +426,27 @@ const result = await query({
    "path": "C:/Users/me/project"
    ```
 
-5. **CLI Flags Override Everything**:
-   - Even policy settings
-   - Can bypass security rules (be careful!)
+5. **MCP configuration is split across files**:
+   - User/local MCP servers can be configured via `mcpServers` in `~/.claude/settings.json` and `.claude/settings.local.json`.
+   - Project-shared MCP servers live in `.mcp.json` and are approval-gated per user/per project.
+   - Dynamic MCP servers come from `--mcp-config` (optionally with `--strict-mcp-config`).
 
 ### Best Practices
 
-**1. Use Project Settings for Team Consistency**:
+**1. Use the right file for the scope**:
 ```bash
-# Commit project settings to git
+# Team-shared
 git add .claude/settings.json
-git commit -m "Add Claude Code team settings"
+
+# Personal overrides (keep gitignored)
+git add .claude/settings.local.json
 ```
 
-**2. Use Local Settings for Personal Overrides**:
-```bash
-# .gitignore already includes .claude/ in cwd
-echo "Personal settings here" > .claude/settings.json
-```
+**2. Prefer built-in management commands when available**:
+- MCP servers: `claude mcp add/list/get/remove`
+- Plugins: `claude plugin ...` / `/plugin`
 
-**3. Document Configuration Decisions**:
-```json
-{
-  "permissions": {
-    "rules": [
-      {
-        "tool": "Delete",
-        "behavior": "deny",
-        "reason": "Team decision: no auto-deletes (2024-10-15)"
-      }
-    ]
-  }
-}
-```
-
-**4. Use Environment Variables for Secrets**:
+**3. Use environment variables for secrets**:
 ```json
 {
   "mcpServers": {
@@ -802,46 +459,44 @@ echo "Personal settings here" > .claude/settings.json
 }
 ```
 
-**5. Test Configuration Changes**:
+**4. Validate changes safely**:
 ```bash
-# Test with dry-run or plan mode first
-claude-code --permission-mode plan
+claude --permission-mode plan
+claude mcp list
 ```
 
 ---
 
 ## Summary
 
-### Configuration Sources (Priority Order)
+### Configuration sources (conceptual precedence)
 
-1. **CLI Flags** - Highest priority, current command only
-2. **Session Settings** - In-memory, temporary
-3. **Local Settings** - `.claude/` in cwd, gitignored
-4. **Project Settings** - `.claude/` in git root, committed
-5. **User Settings** - `~/.claude/`, user global
-6. **Policy Settings** - `/etc/claude/`, enterprise-wide
-7. **Defaults** - SDK defaults, lowest priority
+1. **Managed settings** (`managed-settings.json`) — enterprise policy (can constrain or override)
+2. **CLI flags / SDK options** — per-run configuration
+3. **Local settings** (`.claude/settings.local.json`)
+4. **Project settings** (`.claude/settings.json`)
+5. **User settings** (`~/.claude/settings.json`)
+6. **Defaults**
 
 ### Key Configuration Files
 
-| File | Location | Scope | Shared |
-|------|----------|-------|--------|
-| `settings.json` | `~/.claude/` | User global | No |
-| `settings.json` | `<git-root>/.claude/` | Project | Yes (git) |
-| `settings.json` | `<cwd>/.claude/` | Local | No (gitignored) |
-| `settings.json` | `/etc/claude/` | Enterprise | Yes (managed) |
-| `.env` | Project root | Project | No (gitignored) |
+| File / Dir | Typical location | Purpose |
+|---|---|---|
+| `settings.json` | `~/.claude/settings.json` | User defaults across projects |
+| `settings.json` | `.claude/settings.json` | Team-shared project settings |
+| `settings.local.json` | `.claude/settings.local.json` | Per-user project overrides |
+| `.mcp.json` | `.mcp.json` | Project-shared MCP servers (approval-gated) |
+| `agents/` | `.claude/agents/`, `~/.claude/agents/` | Custom agent definitions |
+| `skills/` | `.claude/skills/`, `~/.claude/skills/` | Skills and slash commands |
+| `managed-settings.json` | platform-specific | Enterprise managed policy settings |
 
 ### Configuration Checklist
 
-- [ ] Set `ANTHROPIC_API_KEY` environment variable
-- [ ] Choose permission mode (default/acceptEdits/bypassPermissions/plan)
-- [ ] Configure MCP servers (if using external tools)
-- [ ] Define custom agents (if needed)
-- [ ] Set up permission rules (for security)
-- [ ] Configure allowed/disallowed tools
-- [ ] Set model preferences
-- [ ] Configure hooks (if needed)
+- [ ] Authenticate (either `claude auth login` or `ANTHROPIC_API_KEY` / `CLAUDE_CODE_OAUTH_TOKEN` depending on your workflow)
+- [ ] Put settings in the right scope (`~/.claude/settings.json`, `.claude/settings.json`, `.claude/settings.local.json`)
+- [ ] Configure MCP servers if needed (`.mcp.json`, `claude mcp add`, `--mcp-config`)
+- [ ] Configure permissions and hooks (see `hooks-permissions-complete.md`)
+- [ ] Configure plugins/marketplaces if needed (see `plugins.md`)
 - [ ] Test configuration in plan mode
 - [ ] Document configuration decisions
 - [ ] Commit project settings to git (if team)

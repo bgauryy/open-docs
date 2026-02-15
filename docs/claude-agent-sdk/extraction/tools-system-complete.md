@@ -24,7 +24,9 @@
 
 ## Overview
 
-The Claude Agent SDK includes **17 built-in tools** for file operations, execution, web access, agent management, and MCP integration.
+This document is derived from `sdk-tools.d.ts` and covers the **17 tools with TypeScript definitions**.
+
+Claude Code v2.1.42 exposes additional runtime tools (for example task management, `ToolSearch`, and `LSP`). For the full runtime surface, see `../tools-complete.md`.
 
 ### Tool Type Union (from source)
 
@@ -113,7 +115,7 @@ export interface FileReadInput {
 **Characteristics**:
 - **Default**: First 2000 lines
 - **Per-Line Limit**: 2000 characters (truncated silently)
-- **PDF Support**: Max 32MB
+- **PDF Support**: Max 20MB (v2.1.42 runtime)
 - **Caching**: File cached after first read
 - **Speed**: 1-50ms (cached: <5ms)
 
@@ -1687,7 +1689,7 @@ FileRead({ file_path: "output.txt" })
 - **Planning**: 1 tool
 - **Web**: 2 tools
 - **MCP**: 3 tools
-- **Total**: 17 tools
+- **Total**: 17 tools (typed)
 
 ### Most Used Tools
 

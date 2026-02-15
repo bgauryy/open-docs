@@ -10,7 +10,7 @@
 1. [Overview](#overview)
 2. [System Prompts](#system-prompts)
 3. [Agent Architecture](#agent-architecture)
-4. [Built-in Agents (All 5)](#built-in-agents-all-5)
+4. [Built-in Agents](#built-in-agents)
 5. [Agent Definition Structure](#agent-definition-structure)
 6. [Configuring Agents](#configuring-agents)
 7. [Context Management](#context-management)
@@ -40,13 +40,16 @@ The Claude Agent SDK provides a sophisticated multi-agent system that allows you
 Main Conversation
      │
      ├─► Subagent (Explore) ─► Fast codebase scan
-     ├─► Subagent (security-review) ─► Security audit
+     ├─► Subagent (Plan) ─► Implementation planning
+     ├─► Subagent (Bash) ─► Command execution
+     ├─► Subagent (claude-code-guide) ─► Documentation queries
      └─► Subagent (general-purpose) ─► Complex task
 ```
 
 **Benefits**:
-- 40-60% token savings with isolated agents
+- 40-70% token savings with isolated agents
 - Faster responses (Haiku for simple tasks)
+- Specialized agents for specific workflows
 - Better security (tool restrictions)
 - Clearer output (agent-specific formatting)
 
@@ -57,7 +60,9 @@ Main Conversation
 The SDK uses three different system prompts depending on the execution context:
 
 ### 1. Standard Claude Code Prompt
-**Source:** cli.js:285 (variable `mOA`)  
+
+**Source (v2.1.42)**: In `@anthropic-ai/claude-code/cli.js`, search for `"You are Claude Code, Anthropic's official CLI for Claude."`
+
 **Usage:** Default for interactive Claude Code CLI sessions
 
 ```
@@ -65,7 +70,9 @@ You are Claude Code, Anthropic's official CLI for Claude.
 ```
 
 ### 2. SDK Mode Prompt
-**Source:** cli.js:285 (variable `Nw9`)  
+
+**Source (v2.1.42)**: In `@anthropic-ai/claude-code/cli.js`, search for `"running within the Claude Agent SDK"`.
+
 **Usage:** When running within Claude Agent SDK (non-interactive)
 
 ```
@@ -73,7 +80,9 @@ You are Claude Code, Anthropic's official CLI for Claude, running within the Cla
 ```
 
 ### 3. Agent Mode Prompt
-**Source:** cli.js:285 (variable `dOA`)  
+
+**Source (v2.1.42)**: In `@anthropic-ai/claude-code/cli.js`, search for `"You are a Claude agent, built on Anthropic's Claude Agent SDK."`
+
 **Usage:** For subagents spawned via the Task tool
 
 ```
@@ -105,9 +114,9 @@ function dM1(A){
 
 ```typescript
 Task({
-  agent_type: "Explore",
-  prompt: "Find all authentication functions in the codebase",
-  expected_output: "List of files and function names"
+  subagent_type: "Explore",
+  description: "Find auth functions",
+  prompt: "Find all authentication functions in the codebase"
 })
 ```
 
@@ -132,7 +141,7 @@ Find {{$ARGUMENTS}} in the codebase using Glob and Grep.
 ### Agent Lifecycle
 
 ```
-1. Agent Invocation → Task tool called with agent_type
+1. Agent Invocation → Task tool called with subagent_type
 2. Context Setup → Fork or isolate based on forkContext
 3. Model Selection → Use agent model or inherit parent
 4. Tool Restriction → Apply allowed/disallowed tools
@@ -143,31 +152,43 @@ Find {{$ARGUMENTS}} in the codebase using Glob and Grep.
 
 ---
 
-## Built-in Agents (All 5)
+## Built-in Agents
+
+Built-in agents are provided by the CLI runtime and form the default subagent menu for the `Task` tool.
+
+**Built-in set (v2.1.42, typical CLI entrypoint):**
+- `Bash`
+- `general-purpose`
+- `statusline-setup`
+- `Explore` (may be disabled by configuration)
+- `Plan`
+- `claude-code-guide` (not included for SDK entrypoints)
+
+**Source (v2.1.42)**: In `@anthropic-ai/claude-code/cli.js`, search for `function aGA()` (built-in agent definitions).
 
 ### 1. Explore Agent
 
 **Purpose**: Fast codebase exploration and discovery
+
+**Source (v2.1.42)**: In `@anthropic-ai/claude-code/cli.js`, search for `agentType: 'Explore'`.
 
 **Definition**:
 ```typescript
 {
   agentType: "Explore",
   source: "built-in",
-  model: "claude-3-5-haiku-20241022",  // Fast & cheap
-  forkContext: false,                   // Isolated context
-  isAsync: false,                       // Synchronous
-  allowedTools: ["Glob", "Grep", "Read", "Bash"],
-  color: "blue_FOR_SUBAGENTS_ONLY"
+  model: "haiku",  // Resolves to claude-3-5-haiku-20241022
+  disallowedTools: ["Task", "Edit", "Write", ...],  // Allows: Glob, Grep, Read, Bash
+  getSystemPrompt: () => "...",
+  whenToUse: "Specialized agent for larger codebase exploration tasks...",
+  criticalSystemReminder_EXPERIMENTAL: "CRITICAL: This is a READ-ONLY task..."
 }
 ```
 
 **Characteristics**:
-- **Model**: Haiku (fastest, most cost-effective)
-- **Context**: Isolated (no parent conversation history)
-- **Tools**: File discovery only (Glob, Grep, Read, Bash)
-- **Speed**: ~5-15 seconds typical execution
-- **Token Usage**: 40-60% less than main agent
+- **Model**: `haiku` by default
+- **Context**: Isolated by default
+- **Tools**: Read-only and search-oriented (the agent is constrained away from editing/writing)
 
 **When to Use**:
 - Initial codebase exploration
@@ -180,34 +201,22 @@ Find {{$ARGUMENTS}} in the codebase using Glob and Grep.
 ```typescript
 // Basic exploration
 Task({
-  agent_type: "Explore",
-  prompt: "Find all React components that use useState",
-  expected_output: "List of component files with line numbers"
+  subagent_type: "Explore",
+  description: "Find React components",
+  prompt: "Find all React components that use useState"
 })
 
-// With thoroughness level
+// With a caller-specified thoroughness hint (convention)
 Task({
-  agent_type: "Explore",
-  prompt: "very thorough: Find all API endpoints and their authentication",
-  expected_output: "Complete list with authentication methods"
+  subagent_type: "Explore",
+  description: "Audit API endpoints",
+  prompt: "Very thorough: find all API endpoints and their authentication"
 })
 ```
 
-**Thoroughness Levels**:
-```typescript
-const THOROUGHNESS_PATTERNS = {
-  quick: /\bquick\b/i,           // Fast, surface-level scan
-  medium: /\bmedium\b/i,         // Balanced approach (default)
-  thorough: /\b(very )?thorough\b/i  // Deep, comprehensive search
-};
-```
-
-**Token Efficiency**:
-```
-Main agent (with full context): ~50,000 tokens
-Explore agent (isolated): ~15,000 tokens
-Savings: 70% reduction in context tokens
-```
+**Thoroughness (v2.1.42):**
+- The built-in Explore agent’s instructions ask the caller to specify a thoroughness level (`quick`, `medium`, `very thorough`).
+- This is a prompting convention: it is not a separate validated field in the Task tool schema.
 
 ---
 
@@ -215,29 +224,29 @@ Savings: 70% reduction in context tokens
 
 **Purpose**: Complex multi-step tasks with full tool access
 
+**Source (v2.1.42)**: In `@anthropic-ai/claude-code/cli.js`, search for `agentType: 'general-purpose'`.
+
 **Definition**:
 ```typescript
 {
   agentType: "general-purpose",
   source: "built-in",
-  model: "inherit",                     // Use parent model
-  forkContext: true,                    // Includes parent context
-  isAsync: false,                       // Synchronous
-  allowedTools: ["*"],                  // ALL tools available
-  color: undefined                      // No color (not visually distinguished)
+  tools: ["*"],                         // ALL tools available
+  whenToUse: "General-purpose agent for researching complex questions...",
+  getSystemPrompt: () => "You are an agent for Claude Code..."
+  // No model specified - inherits from parent
+  // No color specified - no visual distinction
 }
 ```
 
 **Characteristics**:
-- **Model**: Inherits from parent (typically Sonnet)
-- **Context**: Forked (includes full conversation history)
-- **Tools**: Unrestricted access to all tools
-- **Speed**: ~30-120 seconds typical execution
-- **Token Usage**: Similar to main agent (no savings)
+- **Model**: Inherits from the parent unless overridden (by agent definition or tool call)
+- **Context**: Isolated unless the agent definition enables `forkContext`
+- **Tools**: `["*"]` (all tools), subject to permission rules and runtime constraints
 
 **When to Use**:
 - Complex tasks requiring multiple tools
-- Tasks needing conversation context
+- Tasks needing broad tool coverage
 - Multi-step workflows
 - When tool restrictions are too limiting
 - Tasks requiring Write/Edit tools
@@ -246,7 +255,8 @@ Savings: 70% reduction in context tokens
 ```typescript
 // Complex refactoring task
 Task({
-  agent_type: "general-purpose",
+  subagent_type: "general-purpose",
+  description: "Refactor auth",
   prompt: `
     Refactor the authentication system:
     1. Update all auth files to use new token format
@@ -254,33 +264,129 @@ Task({
     3. Update tests
     4. Document changes
   `,
-  expected_output: "Summary of changes with file list"
+  // Optionally override model or run in background:
+  // model: "sonnet",
+  // run_in_background: true
 })
-```
-
-**Context Impact**:
-```
-Parent context: 50,000 tokens
-Forked agent: 50,000 + agent output (~5,000) = 55,000 tokens
-No token savings, but better organization
 ```
 
 ---
 
-### 3. statusline-setup Agent
+### 3. Bash Agent
+
+**Purpose**: Command execution specialist
+
+**Source (v2.1.42)**: In `@anthropic-ai/claude-code/cli.js`, search for `agentType: 'Bash'`.
+
+**Definition**:
+```typescript
+{
+  agentType: "Bash",
+  source: "built-in",
+  model: "inherit",                     // Use parent model
+  tools: ["Bash"],                      // Only Bash tool
+  whenToUse: "Command execution specialist for running bash commands. Use this for git operations, command execution, and other terminal tasks.",
+  getSystemPrompt: () => "..."
+}
+```
+
+**Characteristics**:
+- **Model**: Inherits from parent (typically Sonnet)
+- **Context**: Isolated
+- **Tools**: Bash only
+- **Speed**: Variable (depends on command)
+
+**When to Use**:
+- Git operations
+- Command execution
+- Terminal tasks
+- System operations
+
+---
+
+### 4. Plan Agent
+
+**Purpose**: Software architect for implementation planning
+
+**Source (v2.1.42)**: In `@anthropic-ai/claude-code/cli.js`, search for `agentType: 'Plan'`.
+
+**Definition**:
+```typescript
+{
+  agentType: "Plan",
+  source: "built-in",
+  model: "inherit",                     // Use parent model
+  disallowedTools: ["Task", "Edit", "Write", ...],  // Same as Explore
+  tools: _E.tools,                      // Uses Explore's tool set
+  whenToUse: "Software architect agent for designing implementation plans. Use this when you need to plan the implementation strategy for a task. Returns step-by-step plans, identifies critical files, and considers architectural trade-offs.",
+  getSystemPrompt: () => "You are a software architect and planning specialist...",
+  criticalSystemReminder_EXPERIMENTAL: "CRITICAL: This is a READ-ONLY task..."
+}
+```
+
+**Characteristics**:
+- **Model**: Inherits from parent (typically Sonnet for accuracy)
+- **Context**: Isolated (READ-ONLY)
+- **Tools**: Same as Explore (Glob, Grep, Read, Bash) - no editing
+
+**When to Use**:
+- Planning implementation strategies
+- Designing architectural approaches
+- Identifying critical files for tasks
+- Evaluating trade-offs before implementation
+
+---
+
+### 5. claude-code-guide Agent
+
+**Purpose**: Documentation queries for Claude Code, SDK, and API
+
+**Source (v2.1.42)**: In `@anthropic-ai/claude-code/cli.js`, search for `nGA = 'claude-code-guide'`.
+
+**Definition**:
+```typescript
+{
+  agentType: "claude-code-guide",
+  source: "built-in",
+  model: "haiku",                       // Fast for doc queries
+  tools: ["Glob", "Grep", "Read", "WebFetch", "WebSearch"],
+  permissionMode: "dontAsk",            // Never prompt; deny if a prompt would be required
+  whenToUse: "Use this agent when the user asks questions (\"Can Claude...\", \"Does Claude...\", \"How do I...\") about: (1) Claude Code (the CLI tool) - features, hooks, slash commands, MCP servers, settings, IDE integrations, keyboard shortcuts; (2) Claude Agent SDK - building custom agents; (3) Claude API (formerly Anthropic API) - API usage, tool use, Anthropic SDK usage.",
+  getSystemPrompt: ({toolUseContext}) => "..."
+}
+```
+
+**Characteristics**:
+- **Model**: Haiku (fast, efficient for documentation lookup)
+- **Context**: Isolated
+- **Tools**: File reading + web access for documentation
+- **Special**: `permissionMode: "dontAsk"` - avoids interactive prompts (tools that would require prompting are denied)
+
+**When to Use**:
+- Questions about Claude Code features
+- Claude Agent SDK usage
+- Claude API documentation
+- MCP server questions
+- Settings and configuration help
+
+---
+
+### 6. statusline-setup Agent
 
 **Purpose**: Configure terminal status line settings
+
+**Source (v2.1.42)**: In `@anthropic-ai/claude-code/cli.js`, search for `agentType: 'statusline-setup'`.
 
 **Definition**:
 ```typescript
 {
   agentType: "statusline-setup",
   source: "built-in",
-  model: "claude-3-5-sonnet-20241022",
-  forkContext: false,                   // Isolated
-  isAsync: false,
-  allowedTools: ["Read", "Edit"],       // Config files only
-  color: "green_FOR_SUBAGENTS_ONLY"
+  model: "sonnet",                      // Resolves to claude-3-5-sonnet-20241022
+  tools: ["Read", "Edit"],              // Config files only
+  color: "orange",
+  whenToUse: "Use this agent to configure the user's Claude Code status line setting.",
+  getSystemPrompt: () => "You are a status line setup agent..."
 }
 ```
 
@@ -288,8 +394,6 @@ No token savings, but better organization
 - **Model**: Sonnet (accuracy for config files)
 - **Context**: Isolated
 - **Tools**: Read and Edit only (safe, limited scope)
-- **Speed**: ~10-20 seconds
-- **Token Usage**: Minimal
 
 **When to Use**:
 - Initial terminal setup
@@ -299,114 +403,26 @@ No token savings, but better organization
 **Usage Example**:
 ```typescript
 Task({
-  agent_type: "statusline-setup",
-  prompt: "Configure status line for my terminal: ghostty",
-  expected_output: "Status line configuration complete"
+  subagent_type: "statusline-setup",
+  description: "Configure status line",
+  prompt: "Configure status line for my terminal: ghostty"
 })
 ```
 
 ---
 
-### 4. output-style-setup Agent
+### Removed/Plugin Agents
 
-**Purpose**: Create and configure custom output styles
+The following agent names are sometimes referenced in older writeups, but are not guaranteed to be built-in in v2.1.42:
 
-**Definition**:
-```typescript
-{
-  agentType: "output-style-setup",
-  source: "built-in",
-  model: "claude-3-5-sonnet-20241022",
-  forkContext: false,                   // Isolated
-  isAsync: false,
-  allowedTools: ["Read", "Write", "Edit", "Glob", "Grep"],
-  color: "yellow_FOR_SUBAGENTS_ONLY"
-}
-```
+#### output-style-setup (Not a Built-in Agent)
+- **Status**: Not found as built-in agent
+- **Likely**: Plugin feature or deprecated
+- `output-styles` appears as a plugin configuration option, not an agent
 
-**Characteristics**:
-- **Model**: Sonnet
-- **Context**: Isolated
-- **Tools**: File operations for style creation
-- **Speed**: ~15-30 seconds
-- **Token Usage**: Low
-
-**When to Use**:
-- Create custom output formatting
-- Configure response styles
-- Setup project-specific output templates
-
-**Usage Example**:
-```typescript
-Task({
-  agent_type: "output-style-setup",
-  prompt: "Create a concise output style for code reviews",
-  expected_output: "Output style created and configured"
-})
-```
-
----
-
-### 5. security-review Agent
-
-**Purpose**: Security audit of code changes (git branch)
-
-**Definition**:
-```typescript
-{
-  agentType: "security-review",
-  source: "built-in",
-  model: "claude-3-5-sonnet-20241022",
-  forkContext: false,                   // Isolated
-  isAsync: false,
-  allowedTools: [
-    "Bash(git diff:*)",           // Git commands only
-    "Bash(git status:*)",
-    "Bash(git log:*)",
-    "Bash(git show:*)",
-    "Bash(git remote show:*)",
-    "Read",
-    "Glob",
-    "Grep",
-    "LS",
-    "Task"
-  ],
-  color: "red_FOR_SUBAGENTS_ONLY"
-}
-```
-
-**Characteristics**:
-- **Model**: Sonnet (accuracy for security)
-- **Context**: Isolated
-- **Tools**: Git-restricted Bash + file reading
-- **Speed**: ~30-60 seconds (depends on changes)
-- **Token Usage**: Medium (analyzing diffs)
-
-**Special Feature**: Bash tool is restricted to git commands only
-```typescript
-// Allowed
-Bash({ command: "git diff main" })
-Bash({ command: "git log -10" })
-
-// Blocked (not git commands)
-Bash({ command: "npm install" })  // ❌ Blocked
-Bash({ command: "rm -rf /" })      // ❌ Blocked
-```
-
-**When to Use**:
-- Pre-commit security review
-- Branch change analysis
-- Vulnerability scanning
-- Code audit before merge
-
-**Usage Example**:
-```typescript
-Task({
-  agent_type: "security-review",
-  prompt: "Review security implications of changes in current branch vs main",
-  expected_output: "Security assessment with risk level and recommendations"
-})
-```
+#### security-review (Plugin Agent, Not Built-in)
+- `security-review` is not part of the default built-in set returned by the CLI runtime.
+- If installed as a plugin, agent types are typically **namespaced** by plugin name and file path (e.g., `security-review:agent-name`).
 
 ---
 
@@ -414,30 +430,39 @@ Task({
 
 ### Complete TypeScript Definition
 
+**⚠️ Note**: The actual implementation uses different field names than TypeScript definitions. Below shows the **runtime implementation** structure:
+
 ```typescript
 type AgentDefinition = {
   // Identification
   agentType: string;                    // Unique agent identifier
   source: AgentSource;                  // Where agent is defined
-  
+  baseDir?: string;                     // Agent base directory
+
   // Execution Configuration
-  model: string | 'inherit';            // Model ID or inherit from parent
-  forkContext?: boolean;                // Include parent context (default: false)
-  isAsync?: boolean;                    // Background execution (default: false)
-  
-  // Tool Access
-  allowedTools: string[];               // Tool whitelist (["*"] = all)
-  
+  model?: string | 'inherit';           // Model shorthand (e.g., "haiku", "sonnet") or inherit
+
+  // Tool Access (multiple patterns)
+  tools?: string[];                     // Tool whitelist (["*"] = all)
+  disallowedTools?: string[];           // Tool blacklist (alternative to tools)
+
+  // System Prompt
+  getSystemPrompt: (context?: any) => string;  // Function returning system prompt
+  whenToUse?: string;                   // Description of when to use this agent
+
   // Visual Identification
-  color?: AgentColor;                   // UI color for agent
-  
+  color?: string;                       // UI color (e.g., "orange", not "_FOR_SUBAGENTS_ONLY")
+
+  // Special Behaviors
+  permissionMode?: string;              // e.g., "dontAsk" to avoid prompts (deny if a prompt would be required)
+  criticalSystemReminder_EXPERIMENTAL?: string;  // Extra system reminder
+
   // Plugin Information (if applicable)
   plugin?: string;                      // Plugin name
-  baseDir?: string;                     // Plugin base directory
   filename?: string;                    // Agent definition file
 };
 
-type AgentSource = 
+type AgentSource =
   | 'built-in'           // SDK-provided agents
   | 'userSettings'       // User's ~/.claude/
   | 'projectSettings'    // Project .claude/
@@ -445,54 +470,55 @@ type AgentSource =
   | 'plugin'             // Plugin-provided
   | 'flagSettings';      // CLI flag override
 
-type AgentColor = 
-  | "red_FOR_SUBAGENTS_ONLY"
-  | "blue_FOR_SUBAGENTS_ONLY"
-  | "green_FOR_SUBAGENTS_ONLY"
-  | "yellow_FOR_SUBAGENTS_ONLY"
-  | "purple_FOR_SUBAGENTS_ONLY"
-  | "orange_FOR_SUBAGENTS_ONLY"
-  | "pink_FOR_SUBAGENTS_ONLY"
-  | "cyan_FOR_SUBAGENTS_ONLY";
+type AgentColor = string;  // Simple string, e.g., "red", "blue", "orange"
+// Note: Runtime uses plain color names, not "_FOR_SUBAGENTS_ONLY" suffix
 ```
 
 ### Field Explanations
 
 **agentType**:
 - Unique identifier for agent
-- Used in Task tool: `agent_type: "Explore"`
+- Used in Task tool: `subagent_type: "Explore"`
 - Convention: lowercase with hyphens
 
 **source**:
 - Origin of agent definition
 - Determines precedence for conflicts
-- `built-in` cannot be overridden
+- Later sources can override earlier ones for the same `agentType` (see “Agent Definition Sources and Precedence” below)
 
 **model**:
-- Anthropic model ID or `"inherit"`
+- Model shorthand: `"haiku"`, `"sonnet"`, `"opus"`, or `"inherit"`
 - `"inherit"` uses parent conversation model
-- Supports: opus, sonnet, haiku variants
+- Shorthands resolve to full model IDs (e.g., "haiku" → "claude-3-5-haiku-20241022")
+- Optional field (omission implies inherit)
 
-**forkContext**:
-- `true`: Include parent conversation history (context-aware)
-- `false`: Start fresh (isolated, token-efficient)
-- Default: `false`
-
-**isAsync**:
-- `true`: Execute in background, return immediately
-- `false`: Wait for completion, return result
-- Default: `false`
-
-**allowedTools**:
+**tools**:
 - Array of tool names: `["Read", "Write", "Bash"]`
 - Wildcard: `["*"]` (all tools)
-- Pattern matching: `["Bash(git*)", "Read"]` (git commands only)
+- The CLI runtime parses a `ToolName(pattern)` form, but in v2.1.42 the pattern is only used for the `Task(...)` tool to restrict allowed agent types (other tools treat `ToolName(pattern)` like `ToolName`)
+- Mutually exclusive with `disallowedTools`
+
+**disallowedTools**:
+- Array of tool names to prohibit
+- Used by Explore and Plan agents
+- All non-listed tools are allowed
+- Mutually exclusive with `tools`
+
+**getSystemPrompt**:
+- Function returning the agent's system prompt
+- Can accept context parameter
+- Executed at agent invocation time
+
+**whenToUse**:
+- String describing when to use this agent
+- Helps users/main agent select appropriate agent
+- Shown in Task tool documentation
 
 **color**:
 - Visual identifier in UI
-- 8 available colors
-- Suffix `_FOR_SUBAGENTS_ONLY` required
-- Assigned automatically if not specified
+- Simple string: `"orange"`, `"blue"`, `"red"`, etc.
+- No suffix required (not `"_FOR_SUBAGENTS_ONLY"`)
+- Optional (assigned automatically if not specified)
 
 ---
 
@@ -513,6 +539,30 @@ export type Options = Omit<BaseOptions, 'customSystemPrompt' | 'appendSystemProm
     };
 };
 ```
+
+### Claude Code CLI Agent Sources and Precedence (v2.1.42)
+
+The Claude Code CLI runtime assembles `activeAgents` from multiple sources:
+
+1. **Built-in agents** (shipped with the CLI)
+2. **Plugin agents** (loaded from plugin `agents/` directories and configured agent paths)
+3. **Agent files** (`.md` files discovered under):
+   - Project: `.claude/agents/` (searched up the directory tree from the current working directory)
+   - Personal: `~/.claude/agents/`
+   - Policy-managed: a policy settings root (enterprise)
+4. **Flag-defined agents** (JSON passed via CLI flags, merged after file/plugin sources)
+
+Agents are deduplicated by `agentType`, with later sources overriding earlier ones. In the CLI runtime, the precedence order is:
+
+```text
+built-in < plugin < userSettings < projectSettings < flagSettings < policySettings
+```
+
+**Source (v2.1.42)**:
+- Search: `function aGA()` (built-in agents)
+- Search: `oK1 = zA(async () => {` (plugin agents)
+- Search: `hp = zA(async function (A, q)` and `join(..., ".claude", "agents")` (agent file discovery)
+- Search: `activeAgents: YI(` (dedup + merge)
 
 ### SDK API AgentDefinition (Public)
 
@@ -567,7 +617,7 @@ const response = await query({
 ### Tool Restrictions
 
 #### Available Tools
-- `Agent` - Delegate to subagents
+- `Task` - Delegate to subagents
 - `Bash` - Execute shell commands
 - `BashOutput` - Read background shell output
 - `Read` - Read files
@@ -618,17 +668,14 @@ full_access: {
 
 ### Forked Context (forkContext: true)
 
-**Behavior**:
-- Includes full parent conversation history
-- Agent has access to all previous context
-- Output added back to main conversation
+`forkContext` is a property on the **agent definition** (not a per-call parameter). When enabled, the subagent receives the main thread’s prior messages as context.
 
-**Token Impact**:
-```
-Parent context: 50,000 tokens
-Agent processing: + 10,000 tokens
-Total: 60,000 tokens (no savings)
-```
+**Behavior (v2.1.42):**
+- Subagent receives main-thread context messages via the Task tool runner.
+- The runtime injects a “sub-agent entered” marker message to make the boundary explicit.
+- Tool availability is still governed by the subagent’s resolved tool list and permission mode.
+
+**Impact:** Forked-context agents can be easier to prompt (you can reference earlier work), but they may increase context size and cost depending on the session history.
 
 **Use Cases**:
 - Agent needs conversation context
@@ -636,32 +683,13 @@ Total: 60,000 tokens (no savings)
 - Tasks referencing previous work
 - Context-dependent decisions
 
-**Example**:
-```typescript
-// Agent can reference previous conversation
-Task({
-  agent_type: "general-purpose",  // forkContext: true
-  prompt: "Update the function we discussed earlier",
-  expected_output: "Function updated"
-})
-// ✅ Agent knows which function (from context)
-```
+**Example:** Prefer a dedicated custom agent configured with `forkContext: true` for workflows that repeatedly reference prior context.
 
 ---
 
 ### Isolated Context (forkContext: false)
 
-**Behavior**:
-- Fresh context, no parent history
-- Agent only sees its own prompt
-- Output summarized when returned
-
-**Token Impact**:
-```
-Parent context: 50,000 tokens (ignored)
-Agent processing: 15,000 tokens
-Total: 15,000 tokens (70% savings)
-```
+When `forkContext` is absent/false, each Task invocation starts with fresh context (the subagent only sees the prompt you provide).
 
 **Use Cases**:
 - Independent tasks (exploration, search)
@@ -673,11 +701,10 @@ Total: 15,000 tokens (70% savings)
 ```typescript
 // Agent has no context, must be explicit
 Task({
-  agent_type: "Explore",  // forkContext: false
-  prompt: "Find all files containing 'authentication' in src/auth/",
-  expected_output: "List of matching files"
+  subagent_type: "Explore",
+  description: "Find auth files",
+  prompt: "Find all files containing 'authentication' in src/auth/"
 })
-// ✅ All information in prompt
 ```
 
 **Important**: Isolated agents require complete, self-contained prompts
@@ -686,38 +713,28 @@ Task({
 
 ## Agent Color System
 
-### Color Assignment Algorithm
+### Color Model (v2.1.42)
 
-```typescript
-const AGENT_COLORS = [
-  "red", "blue", "green", "yellow",
-  "purple", "orange", "pink", "cyan"
-];
+Claude Code’s UI uses a small fixed palette of base colors:
 
-function assignAgentColor(agentType: string): string {
-  // Hash agent type to index
-  const hash = hashString(agentType);
-  const index = hash % AGENT_COLORS.length;
-  return AGENT_COLORS[index] + "_FOR_SUBAGENTS_ONLY";
-}
+```text
+red, blue, green, yellow, purple, orange, pink, cyan
 ```
+
+In UI rendering, these are mapped to internal style tokens suffixed with `_FOR_SUBAGENTS_ONLY` (for example, `orange` → `orange_FOR_SUBAGENTS_ONLY`).
 
 **Characteristics**:
-- Deterministic: Same agent type always gets same color
-- 8 available colors
-- Visual distinction in terminal UI
-- Suffix pattern: `_FOR_SUBAGENTS_ONLY`
+- 8 base colors are supported
+- Agent definitions may specify a color by name (e.g., `orange`)
+- The runtime maps recognized color names to internal subagent color tokens
 
-**Built-in Agent Colors**:
-```typescript
-const BUILT_IN_COLORS = {
-  "Explore": "blue_FOR_SUBAGENTS_ONLY",
-  "statusline-setup": "green_FOR_SUBAGENTS_ONLY",
-  "output-style-setup": "yellow_FOR_SUBAGENTS_ONLY",
-  "security-review": "red_FOR_SUBAGENTS_ONLY",
-  "general-purpose": undefined  // No color assignment
-};
-```
+**Notes:**
+- `general-purpose` intentionally returns no subagent color token.
+- In team UI contexts, agents may also be assigned colors sequentially per agent ID.
+
+**Source (v2.1.42)**:
+- Search: `rO = { red: "red_FOR_SUBAGENTS_ONLY",` (color token mapping)
+- Search: `function jc(A) {` and `let K = nO[` (sequential color assignment)
 
 ### UI Rendering
 
@@ -753,28 +770,27 @@ User → Task → Agent starts → [WAIT] → Agent completes → Result returne
 **Example**:
 ```typescript
 const result = Task({
-  agent_type: "Explore",
-  prompt: "Find authentication files",
-  expected_output: "File list"
+  subagent_type: "Explore",
+  description: "Find auth files",
+  prompt: "Find authentication files"
 });
-// Waits ~10 seconds
-// result contains file list
+// Returns a "completed" result payload (see Output Shapes below)
 ```
 
 ---
 
-### Async Agents (isAsync: true)
+### Background Agents (run_in_background: true)
 
 **Behavior**:
 ```
-User → Task → Agent starts → [IMMEDIATE RETURN: agent_id] → Agent continues in background
-Later → AgentOutput → Retrieve result by agent_id
+User → Task(run_in_background=true) → [IMMEDIATE RETURN: outputFile] → Agent continues in background
+Later → Read/tail outputFile to check progress and final output
 ```
 
 **Characteristics**:
-- Returns immediately with agent ID
-- Agent continues in background
-- Retrieve result later with AgentOutputTool
+- Returns immediately with an `outputFile` path
+- Agent continues in the background
+- Progress and final output are written to the output file
 
 **Use Cases**:
 - Long-running analysis
@@ -784,70 +800,90 @@ Later → AgentOutput → Retrieve result by agent_id
 
 **Example**:
 ```typescript
-// Start async agent
-const agentId = Task({
-  agent_type: "security-review",
-  prompt: "Complete security audit of codebase",
-  expected_output: "Security report",
-  is_async: true  // Override agent default
+// Start background agent
+const launched = Task({
+  subagent_type: "general-purpose",
+  description: "Background audit",
+  prompt: "Run a thorough audit of the current changes and summarize risks",
+  run_in_background: true
 });
-// Returns immediately: "agent_abc123"
-
-// Continue other work...
-Write({ file_path: "notes.md", contents: "..." });
-
-// Retrieve result later
-const result = AgentOutput({ agent_id: agentId });
-// Returns: agent output if complete, or status if still running
+// launched.status === "async_launched"
+// launched.outputFile is the file path to read for progress/results
 ```
 
-**Agent Status States**:
+**Checking progress/results (CLI runtime):**
+- Read the output file with `Read({ file_path: launched.outputFile })`
+- Or tail it via `Bash({ command: "tail -n 50 <outputFile>" })`
+
+**Availability notes (v2.1.42):**
+- Background agents can be disabled via environment/config (the runtime may omit `run_in_background` from the input schema).
+- In “in-process teammate” contexts, background agents are rejected; use `run_in_background: false`.
+
+---
+
+### Resuming Agents (resume)
+
+The Task tool supports a `resume` parameter that continues a prior agent by agent ID, preserving that agent’s previous transcript/context.
+
 ```typescript
-type AgentStatus = 
-  | { status: 'running', progress?: string }
-  | { status: 'complete', result: string }
-  | { status: 'error', error: string };
+const first = Task({
+  subagent_type: "general-purpose",
+  description: "Initial analysis",
+  prompt: "Analyze the auth module and propose improvements"
+});
+
+const followUp = Task({
+  subagent_type: "general-purpose",
+  description: "Follow-up",
+  prompt: "Now implement the top 2 improvements you proposed",
+  resume: first.agentId
+});
 ```
+
+**Runtime notes (v2.1.42):**
+- Resuming a still-running background agent is rejected; stop it or wait for completion first.
 
 ---
 
 ## Custom Agent Creation
 
-### Method 1: User Settings (Global)
+### Method 1: Personal agent files
 
-**Location**: `~/.claude/settings.json`
+**Location:** `~/.claude/agents/*.md`
 
-```json
-{
-  "agents": {
-    "my-custom-agent": {
-      "description": "Custom agent for my workflows",
-      "tools": ["Read", "Write", "Grep", "Bash"],
-      "prompt": "You are a specialized agent for code refactoring...",
-      "model": "sonnet"
-    }
-  }
-}
+Agent definitions are loaded from Markdown files with YAML frontmatter. The file name (or `name` in frontmatter) becomes the agent identifier.
+
+Example: `~/.claude/agents/code-reviewer.md`
+
+```markdown
+---
+name: code-reviewer
+description: "Review code changes for project standards"
+model: sonnet
+tools:
+  - Read
+  - Grep
+  - Bash
+permissionMode: default
+forkContext: "false"
+color: purple
+---
+
+You are a strict code reviewer. Focus on correctness, security, and project conventions.
+Return a concise pass/fail summary with actionable fixes.
 ```
 
-### Method 2: Project Settings
+### Method 2: Project agent files
 
-**Location**: `<project-root>/.claude/settings.json`
+**Location:** `<project-root>/.claude/agents/*.md`
 
-```json
-{
-  "agents": {
-    "project-reviewer": {
-      "description": "Project-specific code reviewer",
-      "tools": ["Read", "Grep", "Bash(git*)"],
-      "prompt": "Review code changes according to project standards...",
-      "model": "haiku"
-    }
-  }
-}
-```
+Project agents work the same way as personal agents, but are loaded from the nearest `.claude/agents/` directories while walking up from the current working directory.
 
-### Method 3: Programmatic (SDK)
+### Method 3: Plugin-provided agents
+
+Plugins can ship agents in an `agents/` directory (and/or explicitly configured agent paths). Plugin agents are **namespaced** by plugin and path to avoid collisions (for example: `my-plugin:subdir:agent-name`).
+
+### Method 4: Programmatic (SDK)
 
 ```typescript
 import { query } from '@anthropic-ai/claude-agent-sdk';
@@ -867,7 +903,9 @@ const result = await query({
 });
 ```
 
-### Agent Definition Schema
+**Note:** This SDK `options.agents` surface is distinct from Claude Code’s CLI agent file system (`.claude/agents/*.md`).
+
+### SDK Agent Definition Schema (public)
 
 ```typescript
 type AgentDefinition = {
@@ -882,148 +920,61 @@ type AgentDefinition = {
 
 ## Agent Performance & Token Optimization
 
-### Token Efficiency Comparison
+### What affects performance (v2.1.42)
 
-| Agent Type | Context | Avg Tokens | Savings vs Main |
-|------------|---------|-----------|-----------------|
-| Main (Sonnet) | Full | 50,000 | Baseline |
-| general-purpose | Forked | 50,000+ | 0% (adds overhead) |
-| Explore (Haiku) | Isolated | 15,000 | 70% |
-| statusline-setup | Isolated | 8,000 | 84% |
-| security-review | Isolated | 25,000 | 50% |
+- **Model**: `haiku` is typically faster/cheaper; `sonnet`/`opus` can improve reasoning quality at higher cost/latency.
+- **Context mode**: `forkContext: true` can increase context size because the subagent receives prior messages.
+- **Tool set**: narrower tool access reduces what the agent can do (and can reduce permission overhead), but may require more user-provided context.
+- **Backgrounding**: `run_in_background: true` lets you continue while the agent writes progress to `outputFile`.
 
-### Execution Time Comparison
+### Practical guidelines
 
-| Agent Type | Model | Typical Duration | Use Case |
-|------------|-------|------------------|----------|
-| Explore | Haiku | 5-15s | Fast discovery |
-| general-purpose | Sonnet | 30-120s | Complex tasks |
-| statusline-setup | Sonnet | 10-20s | Config tasks |
-| output-style-setup | Sonnet | 15-30s | Style setup |
-| security-review | Sonnet | 30-60s | Security audit |
-
-### Cost Optimization Strategies
-
-**Strategy 1: Use Haiku for Simple Tasks**
-```typescript
-// ❌ Expensive (Sonnet for simple search)
-const files = mainAgent.search("Find TODO comments");
-// Cost: ~$0.50, Time: 15s
-
-// ✅ Efficient (Haiku isolated agent)
-const files = Task({
-  agent_type: "Explore",
-  prompt: "Find all TODO comments"
-});
-// Cost: ~$0.05, Time: 8s (90% cost reduction)
-```
-
-**Strategy 2: Parallel Async Agents**
-```typescript
-// ❌ Sequential (slow)
-const security = Task({ agent_type: "security-review", ... });
-const exploration = Task({ agent_type: "Explore", ... });
-// Total time: 60s + 10s = 70s
-
-// ✅ Parallel (fast)
-const securityId = Task({ agent_type: "security-review", is_async: true });
-const explorationId = Task({ agent_type: "Explore", is_async: true });
-const security = AgentOutput({ agent_id: securityId });
-const exploration = AgentOutput({ agent_id: explorationId });
-// Total time: max(60s, 10s) = 60s (10s saved)
-```
-
-**Strategy 3: Isolated Context for Independence**
-```typescript
-// ❌ Forked context (unnecessary tokens)
-{ forkContext: true }  // 50k tokens context loaded
-
-// ✅ Isolated context (minimal tokens)
-{ forkContext: false }  // 0 tokens context
-// Savings: 50k tokens × $0.003/1k = $0.15 per invocation
-```
+- Prefer direct tools (`Read`, `Grep`, `Glob`) when you already know what you need to do.
+- Use `Explore` for open-ended codebase discovery that would require many Grep/Read passes.
+- Use `Plan` for planning-only work (read-only constraints).
+- Use `general-purpose` when you need broad tool coverage and multi-step autonomy.
 
 ---
 
 ## Real-World Patterns
 
-### Pattern 1: Multi-Stage Analysis
+### Pattern 1: Two-stage workflow (Explore → general-purpose)
 
 ```typescript
-// Stage 1: Fast exploration (Haiku)
 const files = Task({
-  agent_type: "Explore",
-  prompt: "Find all API route files",
-  expected_output: "List of files"
+  subagent_type: "Explore",
+  description: "Find API routes",
+  prompt: "Find all API route files"
 });
 
-// Stage 2: Detailed analysis (Sonnet)
 const analysis = Task({
-  agent_type: "general-purpose",
-  prompt: `Analyze these API files for security issues: ${files}`,
-  expected_output: "Security assessment"
-});
-
-// Stage 3: Security review (specialized)
-const review = Task({
-  agent_type: "security-review",
-  prompt: "Review current branch for vulnerabilities",
-  expected_output: "Security report"
+  subagent_type: "general-purpose",
+  description: "Analyze API security",
+  prompt: `Analyze these API files for security issues:\n\n${JSON.stringify(files)}`
 });
 ```
 
-### Pattern 2: Parallel Independent Tasks
+### Pattern 2: Background long-running work
 
 ```typescript
-// Launch all agents simultaneously
-const [filesId, securityId, testsId] = [
-  Task({
-    agent_type: "Explore",
-    prompt: "Find all test files",
-    is_async: true
-  }),
-  Task({
-    agent_type: "security-review",
-    prompt: "Audit current changes",
-    is_async: true
-  }),
-  Task({
-    agent_type: "general-purpose",
-    prompt: "Generate test coverage report",
-    is_async: true
-  })
-];
+const launched = Task({
+  subagent_type: "general-purpose",
+  description: "Background report",
+  prompt: "Generate a detailed report of recent changes and risks",
+  run_in_background: true
+});
 
-// Retrieve results when needed
-const files = AgentOutput({ agent_id: filesId });
-const security = AgentOutput({ agent_id: securityId });
-const tests = AgentOutput({ agent_id: testsId });
+// Later:
+// Read({ file_path: launched.outputFile })
 ```
 
-### Pattern 3: Specialized Agent Delegation
+### Pattern 3: Custom agent for a repeated workflow
 
 ```typescript
-// Create project-specific agent
-const codeReviewer = {
-  "code-reviewer": {
-    description: "Enforce project code standards",
-    tools: ["Read", "Grep", "Bash(git*)"],
-    prompt: `
-      Review code changes for:
-      - PEP 8 compliance (Python)
-      - No console.log statements
-      - All functions have docstrings
-      - Tests updated for changes
-    `,
-    model: "sonnet"
-  }
-};
-
-// Use in workflow
 Task({
-  agent_type: "code-reviewer",
-  prompt: "Review current branch vs main",
-  expected_output: "Pass/fail with specific issues"
+  subagent_type: "code-reviewer",
+  description: "Review branch",
+  prompt: "Review current branch vs main and report issues"
 });
 ```
 
@@ -1034,88 +985,68 @@ Task({
 ### Agent Tool (Task Tool)
 
 **Internal Name:** `Task` (CLI) vs `Agent` (SDK API)
-**Source:** cli.js:212 (variable `Y3="Task"`)
+
+**Source (v2.1.42)**: In `@anthropic-ai/claude-code/cli.js`, search for `var ZK = 'Task'`.
 
 ### AgentInput Interface
 
+The Claude Code CLI runtime tool schema is richer than the minimal `AgentInput` shape often shown in older SDK docs.
+
+**Task tool input schema (v2.1.42 runtime):**
+
 ```typescript
-export interface AgentInput {
-    /**
-     * A short (3-5 word) description of the task
-     */
-    description: string;
-    /**
-     * The task for the agent to perform
-     */
-    prompt: string;
-    /**
-     * The type of specialized agent to use for this task
-     */
-    subagent_type: string;
-}
+type TaskToolInput = {
+  // Required
+  description: string;   // short (3–5 words)
+  prompt: string;        // task instructions
+  subagent_type: string; // agent identifier (e.g. "Explore")
+
+  // Optional
+  model?: "sonnet" | "opus" | "haiku";
+  resume?: string;               // resume a prior agentId
+  run_in_background?: boolean;   // background execution (if enabled)
+  max_turns?: number;            // internal/warmup control
+
+  // Team/teammate spawning (when team context is enabled)
+  name?: string;
+  team_name?: string;
+  mode?: "default" | "acceptEdits" | "bypassPermissions" | "delegate" | "dontAsk" | "plan";
+};
 ```
+
+**Task tool output shapes (v2.1.42 runtime):**
+- `status: "completed"` → includes `agentId`, `content[]`, token/tool-use metrics, and `usage`
+- `status: "async_launched"` → includes `agentId` and `outputFile` for progress/results
+- `status: "teammate_spawned"` → includes teammate metadata when spawning into a team context
+
+**Source (v2.1.42)**: Search `@anthropic-ai/claude-code/cli.js` for `subagent_type: x.string()`, `run_in_background`, and `outputFile`.
 
 ### Internal Agent Execution Flow
 
-#### 1. Agent Invocation
-```javascript
-async*call({prompt:A, subagent_type:B, description:Q}, Z, G, Y)
-```
+At a high level, the runtime does the following:
 
-#### 2. Agent Lookup
-```javascript
-let I = Z.options.agentDefinitions.activeAgents.find((z)=>z.agentType===B)
-```
+1. **Load/merge agent definitions** from built-ins, plugins, and `.claude/agents/*.md` files, then deduplicate by `agentType`.
+2. **Apply permissions** to restrict available agent types and tools (both via permission rules and agent `tools`/`disallowedTools`).
+3. **Select an agent definition** matching `subagent_type` (and validate required MCP servers, if any).
+4. **Resolve model** (agent definition model + optional tool-call override).
+5. **Build the subagent system prompt** (`agentDefinition.getSystemPrompt({ toolUseContext })`).
+6. **Decide context mode**:
+   - `forkContext: true` → include main-thread messages and inject a boundary marker message
+   - otherwise → start from only the provided prompt
+7. **Execute** synchronously or in the background (`run_in_background`), returning one of the output shapes described above.
 
-#### 3. Model Selection
-```javascript
-let F = jy1(I.model, Z.options.mainLoopModel)
-```
-
-#### 4. Tool Resolution
-```javascript
-let V = S51(I, Z.options.tools).resolvedTools
-```
-
-#### 5. Message Construction
-```javascript
-let K = I?.forkContext ? Z.messages : void 0
-let D = I?.forkContext ? ZUQ(A,Y) : [mA({content:A})]
-```
-
-#### 6. System Prompt Construction
-```javascript
-let O = I.systemPrompt ? [I.systemPrompt] : [cLQ]
-let R = await lLQ(O, X, L)  // L = additional working directories
-```
-
-#### 7. Agent Execution
-```javascript
-for await(let p of Rt1({
-  agentDefinition:I,
-  promptMessages:K,
-  toolUseContext:Z,
-  canUseTool:G,
-  forkContextMessages:V,
-  isAsync:I?.isAsync||!1,
-  recordMessagesToSessionStorage:!0,
-  querySource:MwQ(I.agentType, X)
-}))
-```
-
-#### 8. Result Processing
-```javascript
-// For async agents
-yield {type:"result", data:{status:"async_launched", agentId:K, ...}}
-
-// For sync agents
-let q = Iw8(z, D)  // Extract metrics and content
-yield {type:"result", data:{status:"completed", prompt:A, ...q}}
-```
+**Primary anchors (v2.1.42):**
+- Built-in agent list: Search `function aGA()`
+- Agent loading/dedup: Search `YF1 =` / `activeAgents: YI(`
+- Agent file discovery: Search `hp =` / `join(..., ".claude", "agents")`
+- Plugin agents: Search `oK1 =` / `agentsPath`
+- Task tool runner: Search `name: ZK` / `subagent_type` / `outputFile`
+- Tool/agent restrictions: Search `allowedAgentTypes`
 
 ### Agent Architect Prompt
 
-**Source:** cli.js:3047 (variable `jw8`)
+**Source (v2.1.42)**: In `@anthropic-ai/claude-code/cli.js`, search for `"You are an elite AI agent architect"`.
+
 **Purpose:** Used by Claude to generate new agent definitions
 
 ```javascript
@@ -1161,17 +1092,13 @@ export type SDKSystemMessage = SDKMessageBase & {
 
 ### Hook Integration
 
-```typescript
-export type SubagentStopHookInput = BaseHookInput & {
-    hook_event_name: 'SubagentStop';
-    stop_hook_active: boolean;
-};
+Claude Code emits hook events around subagent lifecycle:
+- `SubagentStart`
+- `SubagentStop`
 
-// Hook behavior:
-// Exit code 0 - stdout/stderr not shown
-// Exit code 2 - show stderr to subagent and continue
-// Other exit codes - show stderr to user only
-```
+See `open-docs/docs/claude-agent-sdk/hooks-permissions-complete.md` for the complete event payloads and output semantics.
+
+**Source (v2.1.42)**: Search `@anthropic-ai/claude-code/cli.js` for `hook_event_name: "SubagentStart"` and `hook_event_name: "SubagentStop"`.
 
 ### Model Usage Tracking
 
@@ -1197,17 +1124,19 @@ export type ModelUsage = {
 };
 ```
 
-### Tool Name Constants
+### Tool Name Constants (v2.1.42)
 
-| Tool | Constant | Value | Source Line |
-|------|----------|-------|-------------|
-| Grep | `bF` | "Grep" | ~212 |
-| Glob | `ND` | "Glob" | ~212 |
-| Read | `x8` | "Read" | ~212 |
-| Write | `wJ` | "Write" | ~212 |
-| Edit | `R3` | "Edit" | ~212 |
-| Bash | `q4` | "Bash" | ~212 |
-| Task | `Y3` | "Task" | 212 |
+| Tool | Constant | Value | Source Line | Notes |
+|------|----------|-------|-------------|-------|
+| Grep | `e3` | "Grep" | ~212 | File content search |
+| Glob | `PY` | "Glob" | ~212 | File pattern matching |
+| Read | `_q` | "Read" | ~212 | Read files |
+| Write | `G5` | "Write" | ~212 | Write files |
+| Edit | `bq` | "Edit" | ~212 | Edit files |
+| Bash | `I4` | "Bash" | ~212 | Execute commands |
+| Task | `ZK` | "Task" | 153330 | Agent invocation |
+| WebFetch | `mO` | "WebFetch" | 152633 | Fetch web content |
+| WebSearch | `xL` | "WebSearch" | 153406 | Search the web |
 
 ---
 
@@ -1215,17 +1144,19 @@ export type ModelUsage = {
 
 ### Gotchas
 
-1. **Isolated Agents Have No Context**:
+1. **Isolated agents have no main-thread context by default**:
    ```typescript
-   // ❌ Bad: Reference to "that file" unclear
+   // ❌ Bad: unclear reference
    Task({
-     agent_type: "Explore",  // forkContext: false
+     subagent_type: "Explore",
+     description: "Find errors",
      prompt: "Search that file for errors"
    });
-   
-   // ✅ Good: Explicit file path
+
+   // ✅ Good: explicit target
    Task({
-     agent_type: "Explore",
+     subagent_type: "Explore",
+     description: "Scan login errors",
      prompt: "Search src/auth/login.ts for error handling"
    });
    ```
@@ -1240,17 +1171,19 @@ export type ModelUsage = {
    // ❌ Error: Tool "Write" not allowed for agent "Explore"
    ```
 
-4. **Async Agents Don't Auto-Return**:
-   - Must explicitly call `AgentOutput` to retrieve result
-   - No automatic notification when complete
+4. **Background agents write to an output file**:
+   - When `run_in_background: true`, the Task tool returns `outputFile`
+   - Read/tail `outputFile` to retrieve progress and final output
 
 5. **Model Inheritance Can Be Expensive**:
    ```typescript
-   // Parent uses Opus (expensive)
-   { model: "inherit" }  // Agent also uses Opus
-   
-   // Better: Explicit model
-   { model: "haiku" }  // Force cheaper model
+   // Prefer explicit model selection when cost/latency matters
+   Task({
+     subagent_type: "general-purpose",
+     description: "Quick check",
+     prompt: "Summarize the change",
+     model: "haiku"
+   });
    ```
 
 6. **general-purpose Agent No Color**:
@@ -1262,19 +1195,17 @@ export type ModelUsage = {
 **1. Choose the Right Agent**:
 ```typescript
 // ✅ Use Explore for discovery
-Task({ agent_type: "Explore", prompt: "Find files..." })
+Task({ subagent_type: "Explore", description: "Find files", prompt: "Find relevant files for auth" })
 
 // ✅ Use general-purpose for complex tasks
-Task({ agent_type: "general-purpose", prompt: "Refactor auth system..." })
-
-// ✅ Use security-review for security
-Task({ agent_type: "security-review", prompt: "Audit changes..." })
+Task({ subagent_type: "general-purpose", description: "Refactor auth", prompt: "Refactor auth system..." })
 ```
 
 **2. Provide Complete Prompts for Isolated Agents**:
 ```typescript
 Task({
-  agent_type: "Explore",
+  subagent_type: "Explore",
+  description: "Scan components",
   prompt: `
     Find all React components in src/components/ that:
     - Use useState hook
@@ -1282,17 +1213,18 @@ Task({
     - Don't have TypeScript types
     
     Return: File paths with line counts
-  `,
-  expected_output: "List of components: file:lines"
+  `
 });
 ```
 
-**3. Specify Expected Output Format**:
+**3. Specify an output format inside the prompt**:
 ```typescript
 Task({
-  agent_type: "security-review",
-  prompt: "Audit current branch",
-  expected_output: `
+  subagent_type: "general-purpose",
+  description: "Audit branch",
+  prompt: `
+    Audit current branch.
+
     Format:
     Risk Level: HIGH/MEDIUM/LOW
     Issues Found: [list]
@@ -1301,31 +1233,25 @@ Task({
 });
 ```
 
-**4. Use Async for Long Operations**:
+**4. Use background mode for long operations**:
 ```typescript
-// Long-running security audit
-const auditId = Task({
-  agent_type: "security-review",
-  prompt: "Complete codebase security audit",
-  is_async: true
+const launched = Task({
+  subagent_type: "general-purpose",
+  description: "Long audit",
+  prompt: "Complete a thorough audit of the codebase and summarize risks",
+  run_in_background: true
 });
 
-// Continue other work...
-
-// Check later
-const result = AgentOutput({ agent_id: auditId });
+// Later: Read({ file_path: launched.outputFile })
 ```
 
 **5. Combine Agent Types for Workflow**:
 ```typescript
 // 1. Explore (fast discovery)
-const files = Task({ agent_type: "Explore", ... });
+const files = Task({ subagent_type: "Explore", description: "Find entrypoints", prompt: "Find entrypoints and key modules" });
 
 // 2. general-purpose (detailed work)
-const analysis = Task({ agent_type: "general-purpose", ... });
-
-// 3. security-review (specialized audit)
-const security = Task({ agent_type: "security-review", ... });
+const analysis = Task({ subagent_type: "general-purpose", description: "Deep analysis", prompt: `Analyze based on:\n${JSON.stringify(files)}` });
 ```
 
 ---
@@ -1336,27 +1262,17 @@ const security = Task({ agent_type: "security-review", ... });
 
 | Task Type | Agent | Why |
 |-----------|-------|-----|
-| Find files/code | Explore | Fast Haiku, isolated, file tools only |
-| Complex refactoring | general-purpose | Full tools, forked context |
-| Security audit | security-review | Git-restricted bash, security focus |
-| Configuration | statusline/output-style | Minimal tools, config-specific |
+| Find files/code | Explore | Fast Haiku, isolated, read-only file tools |
+| Implementation planning | Plan | Isolated, read-only, same tools as Explore |
+| Command execution | Bash | Specialized for terminal operations |
+| Documentation queries | claude-code-guide | Fast Haiku, web access, documentation focus |
+| Complex refactoring | general-purpose | Full tools, all capabilities |
+| Configuration | statusline-setup | Minimal tools, config-specific |
 | Custom workflow | Custom agent | Tailored tools and prompt |
-
-### Token Efficiency Ranking
-
-1. **Explore** (Haiku + isolated): 70-84% savings
-2. **statusline-setup** (isolated): 84% savings
-3. **security-review** (isolated): 50% savings
-4. **output-style-setup** (isolated): 50-70% savings
-5. **general-purpose** (forked): 0% savings (actually adds overhead)
 
 ### Key Takeaways
 
-- ✅ Use isolated agents (forkContext: false) for token efficiency
-- ✅ Use Explore agent for codebase discovery (40-70% faster + cheaper)
-- ✅ Provide complete prompts to isolated agents (no context available)
-- ✅ Use async agents for parallel execution and long tasks
-- ✅ Create custom agents for repeated specialized workflows
-- ⚠️ Avoid general-purpose for simple tasks (expensive + slow)
-- ⚠️ Remember tool restrictions are strictly enforced
-- ⚠️ 8 color limit for visual distinction
+- Built-in agents are loaded in the CLI runtime and can be combined with custom agents from `.claude/agents/*.md` and plugin agents.
+- Task tool inputs use `subagent_type`, `description`, and `prompt` (plus optional overrides like `model`, `resume`, `run_in_background`).
+- Prefer explicit prompts for isolated agents; use forked-context agents only when you truly need main-thread history.
+- `dontAsk` avoids interactive permission prompts (it does not “auto-approve”).

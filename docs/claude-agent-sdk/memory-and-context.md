@@ -22,15 +22,15 @@
 
 **Important Clarifications:**
 
-❌ **No Automatic Memory System** - Claude Agent SDK does not have a built-in automatic memory feature that remembers things across different sessions without explicit session management.
+❌ **No Guaranteed Cross-Session Memory** - A fresh session does not automatically “remember” prior conversations unless you resume a session transcript or provide durable context via files (for example `CLAUDE.md`). Claude Code also has an optional auto-memory feature, but it is not universally enabled.
 
-❌ **No Automatic Markdown File Creation** - Claude does NOT automatically create markdown files to track project context. If you've heard this from others, they likely created these files manually or instructed Claude to create them.
+❌ **No Implicit Project Notes** - Claude will not silently create or maintain arbitrary project context files. However, Claude Code can generate a `CLAUDE.md` starter file when you run `/init`, and you can ask Claude to create/maintain additional context files explicitly.
 
 ❌ **No Claude.ai Project Integration** - There is NO connection between projects on claude.ai (the web interface) and the Claude Agent SDK or Claude Code CLI. They are separate systems:
 - **claude.ai Projects**: Web-based chat interface with its own memory system
 - **Claude Code "Projects"**: Simply refers to your local workspace/directory with configuration files
 
-❌ **No Persistent Cross-Session Memory** - Each new session starts fresh unless you explicitly use the `resume` functionality.
+❌ **No Cross-Machine Sync by Default** - Session transcripts and local memory files live on disk. Cross-machine sync (if available) is an explicit feature and not the default assumption.
 
 ### What Memory Actually IS
 
@@ -85,11 +85,34 @@
 |---------|-----------|-------|
 | **Session** | A conversation with message history | Single conversation thread |
 | **Project/Workspace** | Your local directory with code | Directory on your filesystem |
-| **Project Settings** | Configuration stored in `.claudeconfig` | Workspace-specific settings |
-| **User Settings** | Configuration in `~/.config/claude/` | All your projects |
-| **Local Settings** | Configuration in `.claude/` (gitignored) | Project but not committed |
+| **Project Settings** | `.claude/settings.json` | Repository-scoped (often committed) |
+| **User Settings** | `~/.claude/settings.json` | Global across projects on this machine |
+| **Local Settings** | `.claude/settings.local.json` | Project-scoped but usually not committed |
 
 ---
+
+## Context Window and Compaction
+
+Claude Code manages the model context window using a mix of:
+- **Transcript persistence** (write everything to disk)
+- **In-context compaction** (replace older turns with a summary so the conversation can continue)
+
+### Auto-compact (Default On)
+
+Auto-compact is controlled by the global setting `autoCompactEnabled` and can be forced off via environment variables.
+
+High-level behavior (v2.1.42):
+- Claude Code reserves up to **20,000 tokens** for model output when computing the effective window.
+- Auto-compact triggers before the effective window is completely full (a buffer is kept for safety and tooling).
+- If the request hits a hard blocking limit, Claude Code returns an error instead of sending an over-limit request.
+
+Useful environment overrides (v2.1.42):
+- `DISABLE_COMPACT` - Disable all compaction
+- `DISABLE_AUTO_COMPACT` - Disable auto-compact (manual `/compact` still available)
+- `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` - Override the auto-compact threshold as a percent of the effective window
+- `CLAUDE_CODE_BLOCKING_LIMIT_OVERRIDE` - Override the hard blocking limit
+
+For hook behavior around compaction (including `PreCompact`), see `hooks-permissions-complete.md`.
 
 ## Session Management (SDK)
 
@@ -334,53 +357,52 @@ claude --resume session-abc-123-... --resume-session-at msg-456-... "Continue fr
 
 ### Where Sessions Are Stored
 
-Session data is stored in platform-specific locations:
+Claude Code persists session transcripts under your Claude Code config directory (typically `~/.claude/`) in a per-project layout:
 
-**macOS/Linux:**
 ```
-~/.local/share/claude/sessions/
-  ├── session-abc-123.json
-  ├── session-def-456.json
-  └── ...
+~/.claude/
+  └── projects/
+      └── <project-id>/
+          ├── <session-id>.jsonl
+          └── <session-id>/
+              └── subagents/
+                  └── agent-<agent-id>.jsonl
 ```
 
-**Windows:**
-```
-%LOCALAPPDATA%\claude\sessions\
-  ├── session-abc-123.json
-  ├── session-def-456.json
-  └── ...
-```
+Notes:
+- Main transcripts are stored as JSONL (`.jsonl`) message logs.
+- When you resume a session, Claude Code loads the transcript for that session ID (or the “most recent” transcript for `--continue`).
 
 ### CLI Session Management Commands
 
 ```bash
-# View session history (if supported by your CLI version)
-claude --list-sessions
+# Continue the most recent conversation in the current directory
+claude --continue "Continue"
 
-# Continue most recent session
-claude --resume "$(claude --list-sessions | head -n1 | awk '{print $1}')" "Continue"
+# Resume by session ID (or open an interactive picker with an optional search term)
+claude --resume session-abc-123 "Continue"
 
-# Clear a session (if supported)
-claude --clear-session session-abc-123
+# When resuming, fork to a new session ID instead of reusing the original
+claude --resume session-abc-123 --fork-session "Try an alternative approach"
 
-# Export session for debugging
-cat ~/.local/share/claude/sessions/session-abc-123.json | jq .
+# When resuming (print mode), resume only up to a specific assistant message.id
+claude --print --resume session-abc-123 --resume-session-at msg-456 "Continue from checkpoint"
+
+# Restore files to the state at a specific user message ID and exit (requires --resume)
+claude --resume session-abc-123 --rewind-files user-msg-789
 ```
 
 ### CLI Configuration for Sessions
 
-Configure default session behavior in `.claudeconfig`:
+Settings that affect transcript retention and memory features live in the settings files:
+- `~/.claude/settings.json` (user)
+- `.claude/settings.json` (project)
+- `.claude/settings.local.json` (local)
 
 ```json
 {
-  "maxTurns": 100,
-  "model": "claude-sonnet-4",
-  "permissionMode": "acceptEdits",
-  "additionalDirectories": [
-    "./docs",
-    "./context"
-  ]
+  "cleanupPeriodDays": 30,
+  "autoMemoryEnabled": false
 }
 ```
 
@@ -388,7 +410,32 @@ Configure default session behavior in `.claudeconfig`:
 
 ## Manual Context Management
 
-Since Claude doesn't automatically create memory files, you need to manage context manually. Here are practical strategies.
+Claude Code can load durable context from a few built-in sources (most notably `CLAUDE.md`, and optionally auto-memory). Beyond that, you manage project context explicitly via files and workflows.
+
+### Built-in Durable Context Files
+
+#### `CLAUDE.md` (User + Project “Memory/Rules”)
+
+Claude Code loads instructions from:
+- **Project memory**: `./CLAUDE.md` (often committed)
+- **User memory**: `~/.claude/CLAUDE.md` (personal, across projects)
+
+You can generate a starter file with `/init` and then iterate on it over time.
+
+#### Auto-memory (Research Preview)
+
+If enabled, Claude Code can read/write an auto-memory file for a project:
+- **Directory**: `~/.claude/projects/<project-id>/memory/`
+- **File**: `MEMORY.md`
+
+Controls:
+- Setting: `autoMemoryEnabled` (project/user settings)
+- Env: `CLAUDE_CODE_DISABLE_AUTO_MEMORY` (forces off)
+- Remote: when `CLAUDE_CODE_REMOTE=true` and `CLAUDE_CODE_REMOTE_MEMORY_DIR` is not set, auto-memory is disabled.
+
+---
+
+### Practical Strategies (When You Need More Than CLAUDE.md)
 
 ### Strategy 1: Project Context File
 
@@ -536,7 +583,8 @@ project/
   │   └── decisions/           # Decision logs
   │       ├── auth-strategy.md
   │       └── database-choice.md
-  ├── .claudeconfig            # Claude configuration
+  ├── .claude/settings.json    # Project settings (optional)
+  ├── .claude/settings.local.json # Local settings (optional)
   ├── src/
   └── ...
 ```
@@ -697,31 +745,24 @@ query({ prompt: "Implement user authentication with JWT tokens" })
 query({ prompt: "Continue authentication work from session-abc. Now add refresh token rotation." })
 ```
 
-### 5. Leverage .claudeconfig
+### 5. Leverage `.claude/settings.json`
 
-Store project-specific configuration:
+Store durable, project-scoped settings in `.claude/settings.json` (and personal/local overrides in `.claude/settings.local.json`).
 
+Example (settings file):
 ```json
 {
-  "permissionMode": "acceptEdits",
-  "additionalDirectories": [
-    "./docs",
-    "./.claude"
-  ],
-  "allowedTools": [
-    "Read",
-    "Write",
-    "Edit",
-    "Bash",
-    "Grep",
-    "Glob",
-    "TodoWrite"
-  ],
-  "maxTurns": 100
+  "cleanupPeriodDays": 30,
+  "autoMemoryEnabled": false,
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "additionalDirectories": ["./docs", "./.claude"]
+  }
 }
 ```
 
-This ensures consistent behavior across sessions.
+Notes:
+- Tool allow/deny lists and turn limits are commonly passed as session options/CLI flags (not always persisted as settings).
 
 ### 6. Create a Session Workflow
 
@@ -996,19 +1037,21 @@ async function runWithBackup(prompt: string) {
 
 ### Q: Does Claude remember things between different projects?
 
-**A:** No. Each project is completely independent. Session history is tied to a specific session ID, which is specific to a project directory. If you want to carry knowledge between projects, you need to:
-1. Export context from one project
-2. Import it into another project's context files
-3. Or use the same `.claudeconfig` across projects
+**A:** Mostly no, but there are a few durable cross-project surfaces:
+
+- **Session transcripts** are per-project and tied to a session ID.
+- **Project memory** (`./CLAUDE.md`) is per-repository/project.
+- **User memory** (`~/.claude/CLAUDE.md`) can apply across projects on the same machine.
+
+To carry knowledge between projects intentionally, export it into durable files (for example `CLAUDE.md` or `.claude/context.md`) and reference them in the new project.
 
 ### Q: My friend says Claude automatically creates markdown files. Why doesn't mine?
 
-**A:** Your friend likely:
-1. Asked Claude to create these files (e.g., "create a project context file")
-2. Manually created them themselves
-3. Misremembers or is using a different tool
+**A:** Claude Code can create some durable files when you ask:
+- `/init` can generate a starter `CLAUDE.md`.
+- If auto-memory is enabled, Claude Code can read/write `~/.claude/projects/<project-id>/memory/MEMORY.md`.
 
-Claude Agent SDK and Claude Code CLI do **not** automatically create memory/context files. This must be done explicitly.
+Outside of those mechanisms, Claude will not create or update project context files unless you explicitly prompt it to do so.
 
 ### Q: How do I connect my claude.ai project to Claude Code?
 
@@ -1023,15 +1066,17 @@ There is no integration between them. If you want to bring context from claude.a
 
 ### Q: Where is my session data stored?
 
-**A:** Platform-specific locations:
-- **macOS/Linux**: `~/.local/share/claude/sessions/`
-- **Windows**: `%LOCALAPPDATA%\claude\sessions\`
+**A:** Under the Claude Code config directory (typically `~/.claude/`), organized by project:
 
-Session files are JSON and contain the full message history.
+- `~/.claude/projects/<project-id>/<session-id>.jsonl` (main transcript)
+- `~/.claude/projects/<project-id>/<session-id>/subagents/agent-<agent-id>.jsonl` (subagent transcripts)
 
 ### Q: How long are sessions kept?
 
-**A:** Sessions are kept indefinitely on your local machine until you manually delete them. The SDK/CLI does not automatically clean up old sessions.
+**A:** Controlled by `cleanupPeriodDays` in settings:
+- `cleanupPeriodDays: 0` keeps transcripts forever (disables cleanup).
+- Positive values retain transcripts for that many days.
+- Default is 30 days.
 
 ### Q: Can I share sessions with team members?
 
@@ -1050,7 +1095,7 @@ claude "Create a handoff document in HANDOFF.md with everything the next person 
 
 **A:** Yes. When you resume a session, the full conversation history is sent to Claude's API, which consumes input tokens. For long sessions:
 1. Consider forking from a specific point
-2. Use context compaction (automatic in SDK)
+2. Use context compaction (automatic in Claude Code when auto-compact is enabled)
 3. Summarize old context into files instead
 
 ### Q: What's the difference between `resume` and `continue`?
@@ -1129,11 +1174,15 @@ const contextUpdate = query({
 
 ### Q: What happens when I hit the context window limit?
 
-**A:** The SDK automatically handles context compaction:
-1. Older messages are summarized
-2. Important tool uses are preserved
-3. Recent messages kept in full
-4. A `PreCompact` hook fires (you can intercept)
+**A:** Claude Code uses compaction to stay within the model’s context limits.
+
+Typical behavior (when auto-compact is enabled):
+1. Older messages are summarized into a compaction result
+2. Recent messages are kept in full
+3. A `PreCompact` hook can run before compaction
+4. The full transcript remains available on disk even after compaction
+
+You can also trigger compaction manually with `/compact`.
 
 You'll see better results by:
 - Keeping sessions focused on specific tasks
@@ -1147,9 +1196,9 @@ You'll see better results by:
 **The Reality of Memory in Claude:**
 - ✅ Session-based: Full history within a session
 - ✅ Resumable: Can continue previous sessions
-- ✅ Manual context: You create and maintain context files
-- ❌ No automatic memory: Doesn't remember between sessions without resume
-- ❌ No auto-files: Doesn't create tracking files automatically
+- ✅ Durable context files: `CLAUDE.md` (user + project) and optional auto-memory (`MEMORY.md`)
+- ✅ Manual context: You can create and maintain additional context files
+- ⚠️ Fresh sessions start with no transcript unless you resume (auto-memory may add context if enabled)
 - ❌ No web integration: Separate from claude.ai projects
 
 **Best Approach:**

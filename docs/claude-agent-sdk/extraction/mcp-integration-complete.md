@@ -1,22 +1,29 @@
 # Claude Agent SDK - MCP Integration Complete Reference
 
 **SDK Version**: 0.1.22
-**Source**: `sdkTypes.d.ts`
+**Claude Code Runtime**: v2.1.42
+**Primary Sources**:
+- SDK types: `sdkTypes.d.ts`
+- Claude Code runtime (v2.1.42): `@anthropic-ai/claude-code/cli.js` (distributed bundle)
+
+Note: MCP behavior at runtime is determined by the Claude Code executable you run (see `comprehensive-guide.md` for `pathToClaudeCodeExecutable`).
 
 ---
 
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [MCP Server Types](#mcp-server-types)
-3. [Transport Mechanisms](#transport-mechanisms)
-4. [Server Configuration](#server-configuration)
-5. [SDK MCP Server Creation](#sdk-mcp-server-creation)
-6. [MCP Tools Integration](#mcp-tools-integration)
-7. [MCP Resources](#mcp-resources)
-8. [Server Lifecycle](#server-lifecycle)
-9. [Real-World Examples](#real-world-examples)
-10. [Gotchas & Best Practices](#gotchas--best-practices)
+2. [Claude Code MCP CLI (mcp-cli)](#claude-code-mcp-cli-mcp-cli)
+3. [Claude Code MCP Management (claude mcp and /mcp)](#claude-code-mcp-management-claude-mcp-and-mcp)
+4. [MCP Server Types](#mcp-server-types)
+5. [Transport Mechanisms](#transport-mechanisms)
+6. [Server Configuration](#server-configuration)
+7. [SDK MCP Server Creation](#sdk-mcp-server-creation)
+8. [MCP Tools Integration](#mcp-tools-integration)
+9. [MCP Resources](#mcp-resources)
+10. [Server Lifecycle](#server-lifecycle)
+11. [Real-World Examples](#real-world-examples)
+12. [Gotchas & Best Practices](#gotchas--best-practices)
 
 ---
 
@@ -42,6 +49,82 @@ MCP Client (built-in)
 - **In-Process Tools**: Zero IPC overhead with SDK transport
 - **Protocol Standardization**: Consistent tool interface
 - **Resource Management**: Access external resources
+
+---
+
+## Claude Code MCP CLI (`mcp-cli`)
+
+Claude Code v2.1.42 includes a CLI surface for inspecting and invoking MCP servers and tools. In Claude Code, this is typically accessed as an entry-mode command:
+
+```bash
+claude --mcp-cli <command> [args]
+```
+
+Commands (v2.1.42):
+
+1. `servers` — List connected MCP servers  
+   - `claude --mcp-cli servers [--json]`
+
+2. `tools [server]` — List available tools (optionally filter by server)  
+   - `claude --mcp-cli tools`  
+   - `claude --mcp-cli tools filesystem`
+
+3. `info <server>/<tool>` — Show tool description and input schema  
+   - `claude --mcp-cli info my-server/my-tool`
+
+4. `call <server>/<tool> <args>` — Invoke a tool with JSON args (or `-` to read JSON from stdin)  
+   - `claude --mcp-cli call my-server/my-tool '{\"key\":\"value\"}'`  
+   - `echo '{\"key\":\"value\"}' | claude --mcp-cli call my-server/my-tool -`
+   - Options: `--json`, `--timeout <ms>`, `--debug`
+
+5. `grep <pattern>` — Regex search tool names/descriptions  
+   - `claude --mcp-cli grep postgres`
+   - Options: `--json`, `--ignore-case` (default: true)
+
+6. `resources [server]` — List MCP resources  
+   - `claude --mcp-cli resources`  
+   - `claude --mcp-cli resources filesystem`
+
+7. `read <resource> [uri]` — Read a resource  
+   - `claude --mcp-cli read my-server/my-resource-name`  
+   - `claude --mcp-cli read my-server file:///path/to/file`
+   - Options: `--json`, `--timeout <ms>`, `--debug`
+
+Timeout notes:
+- `--timeout` defaults to `MCP_TOOL_TIMEOUT` (and is effectively “very large” by default in v2.1.42).
+- Separate from runtime MCP request timeouts used inside an interactive session (`MCP_TIMEOUT`).
+
+---
+
+## Claude Code MCP Management (`claude mcp` and `/mcp`)
+
+Claude Code has two complementary CLI surfaces for MCP:
+
+- `claude mcp ...` configures MCP servers (persisted to disk).
+- `claude --mcp-cli ...` inspects and invokes MCP tools/resources for a running session (reads the session’s MCP state/endpoint).
+
+Inside an interactive session, use `/mcp` to manage connections and authentication prompts (e.g., connect/disconnect a server or complete OAuth).
+
+### `claude mcp` subcommands (v2.1.42)
+
+- `claude mcp list` — list configured servers and check health.
+- `claude mcp get <name>` — show the resolved config and status for one server.
+- `claude mcp add <name> <commandOrUrl> [args...]` — add a server (stdio/http/sse) with options for `--scope`, `--transport`, headers, env, and OAuth.
+- `claude mcp add-json <name> <json>` — add a server using a JSON string (stdio/http/sse).
+- `claude mcp add-from-claude-desktop` — import servers from Claude Desktop (Mac and WSL only).
+- `claude mcp remove <name> [-s <scope>]` — remove a server (or disambiguate when the same name exists in multiple scopes).
+- `claude mcp reset-project-choices` — reset per-user approvals/rejections for project-scoped `.mcp.json` servers in this project.
+- `claude mcp serve` — start the Claude Code MCP server (used for certain integrations).
+
+### Scopes and where they live
+
+In Claude Code v2.1.42, “project-scoped MCP servers” are stored in `.mcp.json` (not in `.claude/settings.json`).
+
+| Scope | Where it is stored | Intended use |
+|---|---|---|
+| `local` | `.claude/settings.local.json` | Private to you in this working directory |
+| `user` | `~/.claude/settings.json` | Personal defaults across projects |
+| `project` | `.mcp.json` | Shared in the repo, but requires per-user approval |
 
 ---
 
@@ -182,7 +265,7 @@ export type McpSSEServerConfig = {
 }
 ```
 - `${VAR_NAME}` → Substituted from environment
-- Must exist in environment (no defaults)
+- Supports `${VAR_NAME}` and `${VAR_NAME:-default}` (default used when the env var is missing)
 
 ---
 
@@ -316,19 +399,28 @@ SDK transport:    ~0.5ms per tool call  ← 30-60x faster!
 
 ## Server Configuration
 
-### Configuration Locations
+### Configuration Sources (Claude Code runtime)
 
-MCP servers can be configured in multiple locations:
+Claude Code v2.1.42 can load MCP servers from several sources:
 
 ```
-1. Programmatic (SDK options)
-2. Local settings (.claude/ in cwd)
-3. Project settings (.claude/ in git root)
-4. User settings (~/.claude/)
-5. Policy settings (/etc/claude/)
+1. CLI flags: --mcp-config (dynamic), optionally with --strict-mcp-config
+2. Local settings: .claude/settings.local.json
+3. User settings: ~/.claude/settings.json
+4. Project config: .mcp.json (shared, requires approval)
+5. Plugins: enabled plugins can contribute MCP servers (and MCP bundles)
+6. Enterprise: managed-mcp.json (exclusive control when present)
 ```
 
-### settings.json Schema
+Notes:
+- `.claude/settings.json` is a project settings file, but MCP servers are not read from it in v2.1.42 (use `.mcp.json` instead for project-shared servers).
+- When an enterprise MCP config is present, Claude Code disallows `--strict-mcp-config` and blocks most dynamic MCP configuration.
+
+### File / flag schema
+
+#### Local + user settings
+
+`~/.claude/settings.json` (user scope) and `.claude/settings.local.json` (local scope) can include:
 
 ```typescript
 {
@@ -338,7 +430,44 @@ MCP servers can be configured in multiple locations:
 }
 ```
 
-### Complete Example
+#### Project-shared `.mcp.json`
+
+`.mcp.json` must include a top-level `mcpServers` map:
+
+```json
+{
+  "mcpServers": {
+    "filesystem": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
+    }
+  }
+}
+```
+
+Servers from `.mcp.json` are gated by an approval step (per user, per project). Until approved, they remain pending and will not be used.
+
+#### CLI: `--mcp-config`
+
+Each `--mcp-config` argument is either:
+- a JSON string containing `{ "mcpServers": { ... } }`, or
+- a file path to a JSON file containing `{ "mcpServers": { ... } }`.
+
+Claude Code merges multiple `--mcp-config` arguments left-to-right (later entries override earlier ones) and marks these servers as `scope: "dynamic"`.
+
+### Precedence (when enterprise MCP config is not active)
+
+At runtime, Claude Code merges MCP servers roughly in this order (later sources override earlier ones when names collide):
+
+1. Plugin-provided MCP servers
+2. User-scoped MCP servers (`~/.claude/settings.json`)
+3. Approved project MCP servers (`.mcp.json`)
+4. Local MCP servers (`.claude/settings.local.json`)
+
+After merging, enterprise allow/deny policy filters may still block servers globally.
+
+### Complete example (user-scoped)
 
 **File**: `~/.claude/settings.json`
 
@@ -369,15 +498,12 @@ MCP servers can be configured in multiple locations:
       "headers": {
         "Authorization": "Bearer ${DB_TOKEN}"
       }
-    },
-    
-    "custom-tools": {
-      "type": "sdk",
-      "name": "custom-tools"
     }
   }
 }
 ```
+
+Note: The SDK “in-process” transport (`type: "sdk"`) is programmatic-only (it requires an in-memory server instance). It is not something Claude Code can load from JSON files.
 
 ---
 
@@ -796,24 +922,16 @@ const result = await query({
 
 ### Gotchas
 
-1. **stdio Server Timeout**:
-   ```typescript
-   // Default MCP server timeout
-   const MCP_SERVER_TIMEOUT = 30000; // 30 seconds
-   
-   // If server doesn't respond within 30s:
-   // Status: 'failed'
-   ```
+1. **Timeouts depend on which surface you’re using**:
+   - `claude --mcp-cli call/read` supports `--timeout <ms>` (default: `MCP_TOOL_TIMEOUT`).
+   - In-session MCP requests and connection behavior are runtime-defined and can be controlled via environment variables (see `extraction/cli-internal-constants.md` for the authoritative list).
 
 2. **Environment Variable Substitution**:
    ```json
-   // ❌ Wrong: Variable doesn't exist
-   { "env": { "TOKEN": "${MISSING_VAR}" } }
-   // Error: MISSING_VAR not found in environment
-   
-   // ✅ Correct: Variable exists
    { "env": { "TOKEN": "${GITHUB_TOKEN}" } }
    ```
+   - Missing variables typically produce warnings during config load (not hard failures).
+   - `${VAR}` and `${VAR:-default}` are supported in MCP configs that expand vars.
 
 3. **SDK Server Instance Reuse**:
    ```typescript
@@ -831,20 +949,17 @@ const result = await query({
 
 4. **Strict MCP Config Mode**:
    ```typescript
-   // Default: Lenient (warnings only)
+   // Default: use MCP servers from all configured sources
    { strictMcpConfig: false }
    
-   // Strict: Fail on any MCP config error
+   // Strict: only use MCP servers provided via --mcp-config
    { strictMcpConfig: true }
    ```
+   `strictMcpConfig` is primarily for reproducibility (avoid picking up user/local/project/plugin MCP servers implicitly).
 
 5. **MCP Tool Name Conflicts**:
    ```
-   Built-in tool: "Read"
-   MCP tool: "read"
-   
-   // Conflict! Built-in takes precedence
-   // MCP tool "read" will be ignored
+   Claude Code namespaces MCP tools (e.g. `mcp__<server>__<tool>`), so they do not collide with built-in tool names like `Read` or `Edit`.
    ```
 
 ### Best Practices
@@ -907,7 +1022,7 @@ if (failed.length > 0) {
 { strictMcpConfig: false }
 
 // Production: strict
-{ strictMcpConfig: true }  // Fail fast on config errors
+{ strictMcpConfig: true }  // Prefer deterministic MCP source set
 ```
 
 ---
@@ -927,13 +1042,13 @@ if (failed.length > 0) {
 ### Configuration Checklist
 
 - [ ] Choose appropriate transport type
-- [ ] Configure server in settings.json
+- [ ] Add server via `claude mcp add` (or project-shared `.mcp.json` / `--mcp-config`)
 - [ ] Set environment variables for secrets
-- [ ] Test server connection (mcpServerStatus)
+- [ ] Test server connection (`claude mcp list`, `/mcp`, or `query.mcpServerStatus()`)
 - [ ] Monitor server health
 - [ ] Handle errors gracefully
 - [ ] Use SDK transport for performance-critical tools
-- [ ] Enable strictMcpConfig in production
+- [ ] Consider strict MCP config for reproducible runs
 
 ### Key Takeaways
 
@@ -943,5 +1058,4 @@ if (failed.length > 0) {
 - ✅ **HTTP/SSE**: For remote servers and cloud services
 - ✅ **Custom tools**: Use `createSdkMcpServer` + `tool` functions
 - ⚠️ **Environment variables**: Use `${VAR_NAME}` syntax
-- ⚠️ **Timeout**: 30 seconds default for server connection
-- ⚠️ **Name conflicts**: Built-in tools take precedence over MCP tools
+- ⚠️ **Project-shared servers**: `.mcp.json` servers require per-user approval before they are used

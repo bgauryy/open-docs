@@ -21,11 +21,21 @@
 
 ### Key Facts
 
-- **Tool Name**: "Skill" (constant `sw` at line 2699)
-- **File Format**: Markdown files named `SKILL.md` with YAML frontmatter
-- **Discovery**: Automatically loaded from plugin directories and skill paths
-- **Invocation**: Via Skill tool or as slash commands
-- **Differentiation**: Marked with `isSkill: true` flag in metadata
+- **Tool Name**: `Skill` (prompt-command execution tool)
+- **Input**: `{ skill: string, args?: string }` (leading `/` in `skill` is accepted)
+- **File Format**: `SKILL.md` (case-insensitive) with YAML frontmatter + Markdown body
+- **Default Locations**:
+  - Project: `.claude/skills/<skill-name>/SKILL.md`
+  - Personal: `~/.claude/skills/<skill-name>/SKILL.md`
+  - Policy-managed skills may also be loaded (platform-dependent)
+- **Invocation Surfaces**:
+  - REPL “slash commands”: typing `/<skill> [args]` (can be disabled with `--disable-slash-commands`)
+  - Model tool-use: the model calls the `Skill` tool directly
+- **Forked Execution**: `context: fork` runs the skill in a sub-agent and returns `status: "forked"` with `agentId` + `result`
+- **Permissions**:
+  - Skill invocation is governed by `Skill`-tool permission rules (allow/deny, supports `:*` wildcards)
+  - `allowed-tools` in a skill can widen the in-memory tool allowlist during skill execution
+- **Hooks**: Skills can include a `hooks` frontmatter block; hooks are registered when the skill is invoked
 
 ---
 
@@ -34,42 +44,56 @@
 ### Component Overview
 
 ```
-┌─────────────────────────────────────────┐
-│        Skill Tool (sw = "Skill")        │
-│         (Line 2699-2750+)               │
-└───────────┬─────────────────────────────┘
-            │
-            ├──> Input Validation (validateInput)
-            ├──> Permission Checking (checkPermissions)
-            └──> Skill Execution (call method)
-                 │
-                 ├──> Load Skill Definition (iM function)
-                 ├──> Process Prompt (wo1 function)
-                 └──> Return Messages & Context Modifiers
++------------------------------+
+|         REPL / Model         |
+| "/<skill> [args]" or tool    |
++--------------+---------------+
+               |
+               v
++------------------------------+
+|          Skill Tool          |
+| validateInput + permissions  |
++--------------+---------------+
+               |
+               v
++------------------------------+
+|       Resolve Skill          |
+| policy/user/project/plugins  |
++--------------+---------------+
+               |
+               v
++------------------------------+
+|   Build Prompt + Context     |
+| base dir + arg substitution  |
+| optional hooks registration  |
++--------------+---------------+
+               |
+     +---------+----------+
+     |                    |
+     v                    v
+Inline (main convo)     Fork (sub-agent)
+returns newMessages     returns result string
 ```
 
 ### Core Components
 
-1. **Skill Constant** (Line 2699)
-   ```javascript
-   var sw="Skill"
-   ```
+1. **Skill Tool (`Skill`)**
+   - `@anthropic-ai/claude-code/cli.js` (search: `st = {`, `validateInput`, `checkPermissions`)
 
-2. **Skill Tool Object** (Lines 2750+)
-   - `name`: sw ("Skill")
-   - `inputSchema`: Zod schema for skill name
-   - `outputSchema`: Success/failure result
-   - `description`: Dynamic description based on skill name
-   - `prompt`: Generates tool prompt with available skills
-   - `validateInput`: Validates skill existence and configuration
-   - `checkPermissions`: Handles permission system
-   - `call`: Executes the skill
+2. **Skill tool prompt + listing/budget**
+   - `@anthropic-ai/claude-code/cli.js` (search: `SLASH_COMMAND_TOOL_CHAR_BUDGET`, `Execute a skill within the main conversation`)
 
-3. **SKILL.md Parser** (Line 2806+)
-   - Function: `jwQ` (load skills from directory)
-   - Reads `SKILL.md` files from directories
-   - Parses frontmatter using `UD` function
-   - Creates skill objects with metadata
+3. **On-disk skills loader**
+   - `@anthropic-ai/claude-code/cli.js` (search: `Loading skills from:`, `conditional skills stored`, `Activated conditional skill`)
+
+4. **Plugin prompt-command loader**
+   - `@anthropic-ai/claude-code/cli.js` (search: `SKILL.md`, `Failed to load skills`)
+
+5. **Slash command parsing**
+   - `@anthropic-ai/claude-code/cli.js` (search: `function pQ4`)
+
+6. **Argument substitution**
+   - `@anthropic-ai/claude-code/cli.js` (search: `function X01`)
 
 ---
 
@@ -81,12 +105,24 @@
 ---
 name: skill-name
 description: Brief description of what this skill does
-when-to-use: When to invoke this skill
-allowed-tools: tool1,tool2,tool3
-argument-hint: [optional arguments]
-version: 1.0.0
+when_to_use: Use when the user asks for <X>. Include trigger phrases and examples.
+allowed-tools:
+  - Read
+  - Glob
+  - Grep
+  - Bash(git:*)
+argument-hint: "[optional arguments]"
+arguments:
+  - arg1
+  - arg2
+# Optional execution mode:
+context: fork
+agent: general-purpose
 model: inherit|sonnet|opus|haiku
+user-invocable: true
 disable-model-invocation: false
+paths: "src/** docs/**"
+version: 1.0.0
 ---
 
 # Skill Content
@@ -97,20 +133,29 @@ It can contain instructions, code examples, or any other guidance.
 
 ### Frontmatter Fields
 
-**Source**: Line 2806+ (jwQ function)
+**Source (v2.1.42)**: `@anthropic-ai/claude-code/cli.js`
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `name` | string | No | Display name (defaults to directory name) |
-| `description` | string | Yes* | Brief description of the skill |
-| `when-to-use` | string | No | Guidance on when to use this skill |
-| `allowed-tools` | string (comma-separated) | No | Tools this skill can use |
-| `argument-hint` | string | No | Hints for arguments |
-| `version` | string | No | Skill version |
-| `model` | string | No | Model preference: "inherit", "sonnet", "opus", "haiku" |
-| `disable-model-invocation` | boolean | No | If true, skill cannot be invoked via Skill tool |
+| `name` | string | No | Display name (defaults to the directory name / command name) |
+| `description` | string | No | Brief description (if omitted, Claude derives one from content) |
+| `when_to_use` | string | No | Guidance + trigger phrases; helps the model decide when to invoke |
+| `allowed-tools` | string \| string[] | No | Tool permission patterns the skill needs (kept minimal) |
+| `argument-hint` | string | No | Short hint shown with the skill (e.g. `\"[pr_number] [--flag]\"`) |
+| `arguments` | string \| string[] | No | Named args for `$name` substitutions in the body |
+| `context` | string | No | `fork` to run in a sub-agent; omit for inline execution |
+| `agent` | string | No | Agent type to use when `context: fork` |
+| `model` | string | No | Model override (`inherit` or a model alias) |
+| `version` | string | No | Optional version label |
+| `user-invocable` | boolean | No | Whether to show the skill in user-facing lists (defaults to true) |
+| `disable-model-invocation` | boolean | No | If true, the `Skill` tool will refuse to run this skill |
+| `paths` | string | No | Conditional activation patterns; activates when touched files match |
+| `hooks` | object | No | Hooks to register when the skill is invoked |
 
-*If `description` is not provided, it falls back to using content or `when-to-use`
+Notes:
+- Use `when_to_use` (underscore), not `when-to-use` (dash).
+- `SKILL.md` is detected case-insensitively (e.g. `skill.md` works).
+- `hooks` uses the same hook event names and hook definition structure described in `hooks-permissions-complete.md`, but is loaded from a skill’s frontmatter and registered at invocation time.
 
 ### Example SKILL.md
 
@@ -118,8 +163,16 @@ It can contain instructions, code examples, or any other guidance.
 ---
 name: pdf-analyzer
 description: Analyze PDF documents and extract key information
-when-to-use: When working with PDF files that need analysis or data extraction
-allowed-tools: Read,Bash
+when_to_use: Use when the user needs help understanding or extracting information from a PDF. Examples: "summarize this pdf", "extract tables", "what are the key points?"
+allowed-tools:
+  - Read
+  - Glob
+  - Grep
+  - Bash(pdftotext:*)
+argument-hint: "[path] [optional focus]"
+arguments:
+  - path
+  - focus
 model: sonnet
 version: 1.0.0
 ---
@@ -132,11 +185,9 @@ version: 1.0.0
 2. Extract text content using appropriate tools
 3. Analyze the structure and extract key information
 4. Present findings in a structured format
-
-## Base Directory
-
-Base directory for this skill: ${baseDir}
 ```
+
+Note: When Claude builds the prompt for an on-disk skill, it prepends a line like `Base directory for this skill: <absolute path>` above the skill body; there is no `${baseDir}` variable substitution.
 
 ---
 
@@ -144,64 +195,24 @@ Base directory for this skill: ${baseDir}
 
 ### Tool Definition
 
-**Location**: Lines 2750+ (`jo1` function)
-**Reference**: Line 2738 shows the complete tool object structure
+The `Skill` tool is implemented in `@anthropic-ai/claude-code/cli.js` (search: `st = {`).
 
-```javascript
-ym = {
-  name: sw,  // "Skill"
-  inputSchema: W$8,  // Zod schema for {command: string}
-  outputSchema: J$8,  // Zod schema for {success: boolean, commandName: string}
-
-  description: async({command: A}) => `Execute skill: ${A}`,
-
-  prompt: async() => q$Q(),  // Generates tool prompt
-
-  userFacingName: () => sw,
-
-  isConcurrencySafe: () => !1,  // false - not safe for concurrent execution
-
-  isEnabled: () => !0,  // true - always enabled
-
-  isReadOnly: () => !1,  // false - can modify state
-
-  // Validation logic...
-  async validateInput({command: A}, B) { /* ... */ },
-
-  // Permission checking...
-  async checkPermissions({command: A}, B) { /* ... */ },
-
-  // Execution logic...
-  async *call({command: A}, B) { /* ... */ },
-
-  // Rendering methods...
-  mapToolResultToToolResultBlockParam(A, B) { /* ... */ },
-  renderToolResultMessage: Mo1,
-  renderToolUseMessage: Oo1,
-  renderToolUseProgressMessage: Ro1,
-  renderToolUseRejectedMessage: To1,
-  renderToolUseErrorMessage: Po1
-}
-```
+Key behaviors:
+- `validateInput`: trims and normalizes the skill name (leading `/` allowed), resolves the skill registry, rejects skills with `disable-model-invocation`.
+- `checkPermissions`: checks allow/deny rules for the `Skill` tool; supports exact matches and `:*` wildcards; otherwise asks and suggests rules to add.
+- `call`: executes inline (injects `newMessages`) or forked (sub-agent run) depending on skill `context`.
 
 ### Input Schema
 
-**Location**: Line 2750+
-
-```javascript
-W$8 = x.object({
-  command: x.string().describe('The skill name (no arguments). E.g., "pdf" or "xlsx"')
-})
+```json
+{ "skill": "commit", "args": "-m \"Fix bug\"" }
 ```
 
 ### Output Schema
 
-```javascript
-J$8 = x.object({
-  success: x.boolean().describe("Whether the skill is valid"),
-  commandName: x.string().describe("The name of the skill")
-})
-```
+The tool returns one of two shapes:
+- **Inline**: `{ success, commandName, allowedTools?, model?, status?: "inline" }` plus injected `newMessages`
+- **Forked**: `{ success, commandName, status: "forked", agentId, result }`
 
 ---
 
@@ -209,74 +220,38 @@ J$8 = x.object({
 
 ### Directory Structure
 
-Skills are loaded from these locations:
+Claude assembles a registry of prompt-based commands (skills and commands) from multiple sources.
 
-1. **Plugin Default Skills Path**: `plugin.skillsPath`
-2. **Plugin Custom Skills Paths**: `plugin.skillsPaths[]`
-3. **User/Project Settings**: Via configuration
+**On-disk skill roots (v2.1.42)**
+- **Policy-managed** skills: a managed `.claude/skills` directory (platform-dependent base path)
+- **User** skills: `~/.claude/skills`
+- **Project** skills: `.claude/skills` in the current repo and in other configured project roots
+- **Additional discovery**: `.claude/skills` directories can be discovered by walking up from allowed working directories (deepest paths take priority)
 
-### Loading Process
+Each on-disk skill is a directory containing `SKILL.md` (case-insensitive). The directory name becomes the skill name.
 
-**Function**: `jwQ` (Line 2806+)
+**Deduplication**
+- Skills are deduplicated by real path to the underlying `SKILL.md` file; the same file loaded from multiple sources is only loaded once.
 
-```javascript
-async function jwQ(A, B, Q, Z) {
-  let G = L1(), Y = [];
+**Conditional skills (`paths`)**
+- If a skill declares `paths`, it is stored as conditional and becomes active only after a touched file path matches one of the patterns.
 
-  // Check for single SKILL.md at root
-  let W = d51(A, "SKILL.md");
-  if (G.existsSync(W)) {
-    // Load single skill from root
-    let I = G.readFileSync(W, {encoding:"utf-8"}),
-        {frontmatter:X, content:F} = UD(I),
-        V = `${B}:${c51(A)}`,
-        K = {filePath:W, baseDir:vm(W), frontmatter:X, content:F},
-        D = oz1(V, K, Q, Z, !0, {isSkillMode:!0});
-    if (D) Y.push(D);
-    return Y;
-  }
+**Plugin-provided skills/commands**
+- Enabled plugins can ship prompt commands (`.md`) and skills (`SKILL.md` in subdirectories). These are namespaced with `:` segments (e.g. `my-plugin:pdf`).
 
-  // Scan subdirectories for SKILL.md files
-  let J = G.readdirSync(A);
-  for (let I of J) {
-    if (!I.isDirectory() && !I.isSymbolicLink()) continue;
-    let X = d51(A, I.name),
-        F = d51(X, "SKILL.md");
-    if (G.existsSync(F)) {
-      // Load skill from subdirectory
-      let V = G.readFileSync(F, {encoding:"utf-8"}),
-          {frontmatter:K, content:D} = UD(V),
-          H = `${B}:${I.name}`,
-          z = {filePath:F, baseDir:vm(F), frontmatter:K, content:D},
-          C = oz1(H, z, Q, Z, !0, {isSkillMode:!0});
-      if (C) Y.push(C);
-    }
-  }
-
-  return Y;
-}
-```
+**Legacy commands**
+- `.claude/commands` is also loaded as a legacy prompt-command source (marked internally as deprecated).
 
 ### Skill Naming Convention
 
-**Pattern**: `{pluginName}:{skillDirectory}` or `{pluginName}:{skillName}`
-
-Examples:
-- `ms-office-suite:pdf`
-- `my-plugin:data-analysis`
-- Single skill: `my-plugin:skill-name`
+Common patterns you will see:
+- **On-disk skills**: `.claude/skills/<name>/SKILL.md` → `name`
+- **Plugin skills/commands**: `plugin-name:<path>:<name>` (colon-separated namespaces)
+- **Legacy `.claude/commands`**: nested paths become `:` segments (e.g. `review:pr`)
 
 ### isSkillMode Flag
 
-**Location**: Line 2806+
-
-When creating a skill object, the function passes `{isSkillMode:!0}` (true) to differentiate skills from regular commands:
-
-```javascript
-D = oz1(H, z, Q, Z, !0, {isSkillMode:!0});
-```
-
-This sets the `isSkill` property on the command object.
+There is no single `isSkill: true` marker that users configure. Internally, the loaders treat `SKILL.md` as “skill mode” (e.g. prepending a base-directory line and using skill-style naming), and treat regular `.md` files as prompt commands.
 
 ---
 
@@ -284,382 +259,260 @@ This sets the `isSkill` property on the command object.
 
 ### Fundamental Difference
 
-| Aspect | Skills | Slash Commands |
-|--------|--------|----------------|
-| File Name | `SKILL.md` | Any `.md` file |
-| Directory | Subdirectories or root | Direct .md files |
-| isSkill Flag | `true` | Not set |
-| Tool | "Skill" tool | "SlashCommand" tool |
-| Invocation | Via Skill tool OR `/skillname` | Via SlashCommand tool OR `/commandname` |
-| Display | Shown in `<available_skills>` | Shown in Available Commands |
+In v2.1.42, a “skill” is a **prompt command definition** (usually from `SKILL.md`), while a “slash command” is a **REPL input surface** (`/<name> ...`) that triggers a prompt command.
+
+| Aspect | Skill (definition) | Slash command (surface) |
+|--------|---------------------|--------------------------|
+| What it is | A prompt-based command loaded into the command registry | A user input syntax in the REPL (`/<command> [args]`) |
+| Where it lives | Files (`SKILL.md`, `.md`) or plugins | Typed by the user at runtime |
+| Executor | The `Skill` tool | Typically translated into a `Skill` tool invocation |
+| Args | Defined by the tool input (`args`) and substituted into the prompt | Parsed from the remainder of the line after the command name |
+| Disable switch | `disable-model-invocation` blocks tool execution | `--disable-slash-commands` disables parsing/listing of slash commands |
 
 ### Shared Characteristics
 
-Both skills and slash commands:
-1. Are defined in Markdown files with frontmatter
-2. Support the same frontmatter fields
-3. Can be invoked as prompt-based commands
-4. Support `allowed-tools`, `model`, `disable-model-invocation`
-5. Are loaded from plugin directories
+Most prompt commands (skills and commands) share these characteristics:
+1. Defined in Markdown with YAML frontmatter
+2. Can request tool permissions via `allowed-tools`
+3. Can optionally set `model` and execution mode (`context: fork`)
+4. Can be namespaced (e.g. `plugin-name:subdir:command`)
 
-### Code Evidence
+### How Slash Commands Are Parsed
 
-**Skills Tool Name** (Line 2699):
-```javascript
-var sw="Skill";
-```
+In the interactive REPL, a line starting with `/` is parsed into:
+- `commandName`: the first token after `/`
+- `args`: the remaining text (may be empty)
 
-**Slash Command Tool Name** (Line 2755+):
-```javascript
-var Sj="SlashCommand";
-```
+The parser also supports an `(MCP)` marker immediately after the command name: `/<name> (MCP) ...`.
 
-**Progress Message Difference** (Line ~2690+):
-```javascript
-// For skills:
-I = A.isSkill ? `The "${A.userFacingName()}" skill is ${A.progressMessage}`
-              : `${A.userFacingName()}is ${A.progressMessage}…`
+Slash command parsing/listing can be disabled with `--disable-slash-commands`. When disabled, `/...` is treated as normal user text rather than a command invocation.
 
-// Command name format:
-X = A.isSkill ? `<command-name>${A.userFacingName()}</command-name>`
-              : `<command-name>/${A.userFacingName()}</command-name>`
-```
+**Where to look**
+- Slash command parser: `@anthropic-ai/claude-code/cli.js` (search: `function pQ4`)
+- Flag wiring: `@anthropic-ai/claude-code/cli.js` (search: `--disable-slash-commands`)
+- REPL integration: `@anthropic-ai/claude-code/cli.js` (search: `disableSlashCommands`)
 
 ---
 
 ## Permission System
 
-### Validation Flow
+The `Skill` tool has its own permission checks that decide whether the skill invocation itself is allowed.
 
-**Location**: Lines 2750+ (validateInput method)
+### Validation
 
-```javascript
-async validateInput({command: A}, B) {
-  let Q = A.trim();
+Before permissions are evaluated, the tool validates:
+- The skill name is non-empty (leading `/` is allowed and stripped for lookup).
+- The skill exists in the resolved skill/command registry.
+- The resolved command is prompt-based and does **not** have `disable-model-invocation: true`.
 
-  // 1. Check for empty command
-  if (!Q) return {result:!1, message:`Invalid skill format: ${A}`, errorCode:1};
+### Tool Permission Rules (Allow/Deny)
 
-  // 2. Remove leading slash if present
-  let Z = Q.startsWith("/") ? Q.substring(1) : Q,
-      G = await UH(); // Get all commands
+The tool consults `toolPermissionContext` for rules targeting the `Skill` tool:
+- **Deny rules** are checked first. If any matching rule is found, execution is blocked.
+- **Allow rules** are checked next. If any matching rule is found, execution proceeds.
 
-  // 3. Check if skill exists
-  if (!Ys(Z, G)) return {result:!1, message:`Unknown skill: ${Z}`, errorCode:2};
+Matching behavior:
+- Rules match against the normalized skill name (leading `/` stripped).
+- Rules can be exact (`commit`) or namespace wildcards (`my-plugin:*`).
 
-  // 4. Load skill definition
-  let Y = iM(Z, G);
-  if (!Y) return {result:!1, message:`Could not load skill: ${Z}`, errorCode:3};
+### Ask + Suggestions
 
-  // 5. Check disable-model-invocation flag
-  if (Y.disableModelInvocation)
-    return {result:!1, message:`Skill ${Z} cannot be used with ${sw} tool due to disable-model-invocation`, errorCode:4};
+If neither allow nor deny rules match, the tool typically asks for approval and suggests adding allow rules to local settings for:
+- `<skill>`
+- `<skill>:*`
 
-  // 6. Ensure it's a prompt-based skill
-  if (Y.type !== "prompt")
-    return {result:!1, message:`Skill ${Z} is not a prompt-based skill`, errorCode:5};
+### Interaction with `allowed-tools`
 
-  return {result:!0};
-}
-```
+The skill’s own `allowed-tools` frontmatter is separate from the “may I run this skill?” decision:
+- It is used to widen the in-memory tool allowlist during skill execution (and for inline skills, via the returned `contextModifier`).
+- It does not by itself prevent other tools; it is an allowlist addition.
 
-### Permission Checking
-
-**Location**: Lines 2750+ (checkPermissions method)
-
-```javascript
-async checkPermissions({command: A}, B) {
-  let Q = A.trim(),
-      Z = Q.startsWith("/") ? Q.substring(1) : Q,
-      Y = (await B.getAppState()).toolPermissionContext,
-      W = await UH(),
-      J = iM(Z, W);
-
-  // Pattern matching function for wildcard permissions
-  I = (K) => {
-    if (K === A) return !0;
-    if (K.endsWith(":*")) {
-      let D = K.slice(0,-2);
-      return A.startsWith(D);
-    }
-    return !1;
-  };
-
-  // Check deny rules
-  let X = Pz(Y, ym, "deny");
-  for (let[K,D] of X.entries())
-    if (I(K)) return {behavior:"deny", message:"Skill execution blocked by permission rules",
-                       decisionReason:{type:"rule", rule:D}};
-
-  // Check allow rules
-  let F = Pz(Y, ym, "allow");
-  for (let[K,D] of F.entries())
-    if (I(K)) return {behavior:"allow", updatedInput:{command:A},
-                       decisionReason:{type:"rule", rule:D}};
-
-  // Default: ask user
-  let V = [{type:"addRules", rules:[{toolName:sw, ruleContent:A}],
-            behavior:"allow", destination:"localSettings"}];
-
-  return {behavior:"ask", message:`Execute skill: ${Z}`,
-          decisionReason:void 0, suggestions:V, metadata:{command:J}};
-}
-```
-
-### Permission Wildcards
-
-Skills support wildcard permissions:
-- `skill-name` - Exact match
-- `plugin:*` - All skills from a plugin
-- Leading slash handling: `/skillname` → `skillname`
+**Where to look**
+- `@anthropic-ai/claude-code/cli.js` (search: `validateInput`, `checkPermissions`, `:*`)
 
 ---
 
 ## Execution Flow
 
-### Skill Invocation
+The `Skill` tool has two execution modes: **inline** (default) and **forked** (`context: fork`).
 
-**Location**: Lines 2750+ (call method)
+### 1) Invocation
 
-```javascript
-async *call({command: A}, B) {
-  // 1. Clean and parse command
-  let Q = A.trim(),
-      Z = Q.startsWith("/") ? Q.substring(1) : Q,
-      G = await UH();
+Skills can be invoked by:
+- The user, via REPL slash commands: `/<skill> [args]`
+- The model, via tool use: `{"skill": "<skill>", "args": "<optional args>"}`
 
-  // 2. Process skill command
-  let Y = await wo1(Z, "", G, B);  // wo1 = process command function
-  if (!Y.shouldQuery) throw Error("Command processing failed");
+### 2) Resolution + Validation
 
-  // 3. Extract metadata
-  let W = Y.allowedTools || [],
-      J = Y.model,
-      I = Y.maxThinkingTokens,
-      X = Y.command.type === "prompt" && Y.command.isModeCommand === !0,
-      F = fP().has(Z) ? Z : "custom";
+The tool:
+1. Trims the skill name and strips a leading `/` (if present).
+2. Loads the current registry of prompt commands (on-disk skills, plugin commands/skills, legacy commands).
+3. Rejects unknown skills and rejects `disable-model-invocation` skills.
 
-  // 4. Track analytics
-  Z1("tengu_skill_tool_invocation", {command_name:F, is_mode_command:X?1:0});
+### 3) Prompt Construction (inline and forked)
 
-  // 5. Filter messages
-  let V = Y.messages.filter((K) => K.type !== "progress");
+For prompt-based skills, Claude builds the prompt text by:
+- Prepending a base directory line for on-disk skills: `Base directory for this skill: <absolute path>`
+- Applying argument substitution (see below)
+- Replacing `${CLAUDE_SESSION_ID}`
+- Running the standard template expansion used for prompt commands
 
-  // 6. Yield result with context modifier
-  yield {
-    type: "result",
-    data: {success:!0, commandName:Z},
-    newMessages: V,
-    contextModifier(K) {
-      let D = K;
+### 4) Inline Execution (default)
 
-      // Add allowed tools to context
-      if (W.length > 0) {
-        D = {...D, async getAppState() {
-          let H = await B.getAppState();
-          return {...H, toolPermissionContext:{
-            ...H.toolPermissionContext,
-            alwaysAllowRules:{
-              ...H.toolPermissionContext.alwaysAllowRules,
-              command:[...new Set([...H.toolPermissionContext.alwaysAllowRules.command||[], ...W])]
-            }
-          }};
-        }};
-      }
+Inline skills execute within the main conversation:
+- The tool returns `newMessages` to inject into the conversation (these messages carry the expanded prompt).
+- The tool output includes optional `allowedTools` and `model`.
+- The tool also returns a `contextModifier` that merges `allowedTools` into the in-memory permission context.
 
-      // Set model override
-      if (J) D = {...D, options:{...D.options, mainLoopModel:J}};
+### 5) Forked Execution (`context: fork`)
 
-      // Set thinking tokens limit
-      if (I !== void 0) D = {...D, options:{...D.options, maxThinkingTokens:I}};
+Forked skills execute in a sub-agent:
+- The tool runs the skill prompt in a forked agent context (optionally using the skill’s `agent` and `model`).
+- The tool returns `{ status: "forked", agentId, result }`.
+- Forked skills do not inject `newMessages` into the main conversation.
 
-      return D;
-    }
-  };
-}
+### 6) Hooks Registration (`hooks`)
+
+If the resolved skill defines `hooks`, they are registered when the skill is invoked.
+- Hooks can be configured per hook event name.
+- Hooks with `once: true` are removed after the first run.
+
+**Where to look**
+- Tool execution and fork handling: `@anthropic-ai/claude-code/cli.js`
+- Skill hook registration: `@anthropic-ai/claude-code/cli.js` (search: `function iW6`)
+
+### Argument Substitution Details (`args`)
+
+Arguments are provided as a raw string (`args`) and tokenized with shell-like quoting rules.
+
+Supported substitutions in the skill body:
+- `$ARGUMENTS` → the raw args string
+- `$1`, `$2`, ... → positional tokens
+- `$ARGUMENTS[0]`, `$ARGUMENTS[1]`, ... → positional tokens
+- If `arguments:` is set in frontmatter (e.g. `arguments: [pr_number, message]`), then `$pr_number` maps to token 1, `$message` maps to token 2, etc.
+
+If `args` is provided and none of the substitutions apply, Claude appends a line like:
+
+```
+ARGUMENTS: <args>
 ```
 
-### Message Processing
-
-**Location**: Line ~2690+ (H$Q function)
-
-```javascript
-async function H$Q(A, B, Q, Z=[], G=[], Y, W) {
-  // 1. Get skill prompt
-  let J = await A.getPromptForCommand(B, Q);
-
-  // 2. Create progress message
-  let I = A.isSkill ? `The "${A.userFacingName()}" skill is ${A.progressMessage}`
-                    : `${A.userFacingName()} is ${A.progressMessage}…`;
-
-  // 3. Create command metadata
-  let X = A.isSkill ? `<command-name>${A.userFacingName()}</command-name>`
-                    : `<command-name>/${A.userFacingName()}</command-name>`;
-
-  let F = [`<command-message>${I}</command-message>`, X,
-           B ? `<command-args>${B}</command-args>` : null]
-          .filter(Boolean).join(" ");
-
-  // 4. Process allowed tools
-  let K = x51(A.allowedTools ?? []);
-
-  // 5. Combine messages
-  let D = G.length>0 || Z.length>0 ? [...G, ...Z, ...J] : J;
-
-  // 6. Calculate thinking tokens
-  let H = m_([mA({content:D})], void 0, W);
-
-  // 7. Get attachments
-  let z = await Qf1(j51(J.filter((q)=>q.type===="text").map((q)=>q.text).join(" "),
-                        Q, null, [], Q.messages, "repl_main_thread"));
-
-  // 8. Construct final messages
-  let C = [
-    mA({content:F, autocheckpoint:Y}),
-    mA({content:D, isMeta:!0}),
-    ...z,
-    ...(K.length || A.model ?
-        [x3({type:"command_permissions", allowedTools:K,
-             model:A.useSmallFastModel ? sF() : A.model})] : [])
-  ];
-
-  return {messages:C, shouldQuery:!0, allowedTools:K,
-          maxThinkingTokens:H>0 ? H : void 0,
-          model:A.useSmallFastModel ? sF() : A.model, command:A};
-}
-```
+**Where to look**
+- Substitution logic: `@anthropic-ai/claude-code/cli.js` (search: `function X01`)
 
 ---
 
 ## Source Code References
 
-### Key Line Numbers
+### Key Modules (v2.1.42)
 
-| Component | Line(s) | Description |
-|-----------|---------|-------------|
-| Skill Constant | 2699 | `var sw="Skill"` |
-| Skill Tool Definition | 2750+ | Complete tool object with all methods |
-| SKILL.md Loading | 2806+ | `jwQ` function - loads skills from directories |
-| Frontmatter Parsing | 2806+ | Uses `UD` function to parse YAML frontmatter |
-| Skill Validation | 2750+ | `validateInput` method in tool object |
-| Permission Checking | 2750+ | `checkPermissions` method |
-| Skill Execution | 2750+ | `call` method (async generator) |
-| Message Processing | ~2690+ | `H$Q` function |
-| Skill vs Command Logic | ~2690+ | `isSkill` flag usage in message formatting |
-| Plugin Loading | 2806+ | `En0` cached function for plugin skills |
+- Skill tool (schemas, validation, permissions, inline vs fork): `@anthropic-ai/claude-code/cli.js` (search: `st = {`)
+- Skill tool prompt + listing/char budget: `@anthropic-ai/claude-code/cli.js` (search: `SLASH_COMMAND_TOOL_CHAR_BUDGET`, `Execute a skill within the main conversation`)
+- On-disk skills loader + conditional activation: `@anthropic-ai/claude-code/cli.js` (search: `Loading skills from:`)
+- Plugin prompt-command loader (plugin commands + plugin skills): `@anthropic-ai/claude-code/cli.js` (search: `SKILL.md`, `Failed to load skills`)
+- Slash command parsing + hook registration helper: `@anthropic-ai/claude-code/cli.js` (search: `function pQ4`, `function iW6`)
+- Argument substitution: `@anthropic-ai/claude-code/cli.js` (search: `function X01`)
 
-### Function Call Chain
+### Useful Search Strings
 
-```
-Skill Tool Invocation
-  └─> call() [Line 2750+]
-      └─> wo1(skillName, args, commands, context)
-          └─> H$Q(skill, args, context, ...)
-              ├─> skill.getPromptForCommand()
-              ├─> Process allowed-tools
-              ├─> Calculate maxThinkingTokens
-              └─> Return messages array
-```
+- `Unknown skill:`
+- `Skill ${z} cannot be used with Skill tool due to disable-model-invocation`
+- `Registered ${w} hooks from skill`
+- `Loading skills from: managed=`
 
 ---
 
 ## Best Practices
 
-### Creating Skills
+### Creating Skills That Work Well
 
-1. **Use Descriptive Names**: Choose clear, action-oriented names
-2. **Provide Good Descriptions**: Include both `description` and `when-to-use`
-3. **Specify Allowed Tools**: List only the tools your skill needs
-4. **Set Model Preferences**: Use `model: inherit` unless you have specific requirements
-5. **Include Examples**: Add usage examples in the skill content
-6. **Document Base Directory**: Reference `${baseDir}` for file operations
+1. **Name for invocation**: The directory name is the invocation name for on-disk skills. Keep it short and stable.
+2. **Write a strong `when_to_use`**: Start with “Use when…”, include trigger phrases and examples. This is what helps the model decide to invoke the skill.
+3. **Keep `allowed-tools` minimal**: Use specific patterns (e.g. `Bash(git:*)`) rather than broad permissions.
+4. **If the skill has args, make them explicit**:
+   - Add `argument-hint` and `arguments`
+   - Use `$ARGUMENTS`, `$1`, `$ARGUMENTS[0]`, or `$<name>` in the body
+5. **Pick inline vs fork intentionally**:
+   - Inline is best when the user wants to steer mid-process.
+   - Fork (`context: fork`) is best for self-contained tasks that can run without mid-process user input.
+6. **Use `user-invocable` and `paths` to reduce clutter**:
+   - `user-invocable: false` hides a skill from user-facing lists.
+   - `paths` makes a skill conditional so it is only activated when relevant files are touched.
 
 ### SKILL.md Template
 
 ```markdown
 ---
-name: my-skill
 description: Brief one-line description
-when-to-use: Specific scenarios when this should be invoked
-allowed-tools: Read,Write,Bash,Grep
-model: inherit
-version: 1.0.0
+when_to_use: Use when ...
+allowed-tools:
+  - Read
+  - Glob
+  - Grep
+  - Bash(git:*)
+argument-hint: "[arg1] [arg2]"
+arguments:
+  - arg1
+  - arg2
+# Optional:
+# context: fork
+# agent: general-purpose
+# model: inherit
 ---
 
-# {Skill Name}
+# Skill Title
 
-## Purpose
-Detailed explanation of what this skill does.
+## Goal
+What the workflow should accomplish and what “done” means.
 
-## Usage
-How to use this skill effectively.
+## Steps
+1. ...
 
-## Instructions
-Step-by-step instructions for the AI.
-
-## Base Directory
-Base directory for this skill: ${baseDir}
-
-## Examples
-Example scenarios and expected outputs.
+## Notes
+- Base directory is provided in the prompt as: `Base directory for this skill: <path>`
+- Args are available as `$ARGUMENTS`, `$1`, `$ARGUMENTS[0]`, and `$<name>` (when `arguments` is set)
 ```
 
-### Skill Organization
+### Recommended Layouts
 
-1. **Directory Structure**:
-   ```
-   skills/
-   ├── data-analysis/
-   │   └── SKILL.md
-   ├── code-review/
-   │   └── SKILL.md
-   └── testing/
-       └── SKILL.md
-   ```
+Project-scoped skills:
+```
+.claude/skills/<skill-name>/SKILL.md
+```
 
-2. **Plugin Integration**:
-   - Place skills in `skillsPath` or `skillsPaths[]`
-   - Use namespaced names: `{plugin}:{skill}`
+Personal skills:
+```
+~/.claude/skills/<skill-name>/SKILL.md
+```
 
-3. **Version Control**:
-   - Track SKILL.md files in git
-   - Use semantic versioning
-   - Document changes in skill content
+### Performance / UX Considerations
 
-### Performance Considerations
-
-1. **Token Budget**: Skills are subject to a character budget (`SLASH_COMMAND_TOOL_CHAR_BUDGET` = 15000)
-2. **Concurrent Execution**: Skills are NOT concurrency-safe (`isConcurrencySafe: false`)
-3. **Caching**: Plugin skills are cached (see `En0` cached function)
-4. **Lazy Loading**: Skills are loaded on-demand
+- **Skill listing char budget**: the “available skills” listing is truncated to a character budget (default `16000`) and can be overridden via `SLASH_COMMAND_TOOL_CHAR_BUDGET`.
+- **Concurrency**: the `Skill` tool is not concurrency-safe (do not assume multiple skills can run in parallel in the same thread).
+- **Conditional skills**: prefer `paths` for repo-specific skills to keep irrelevant skills out of the model’s prompt until needed.
 
 ---
 
 ## Advanced Topics
 
-### Mode Commands vs Regular Skills
+### Conditional Skills (`paths`)
 
-Some skills can be marked as "mode commands" with `isModeCommand: true`. These:
-- Are shown in a prioritized section
-- Represent structured workflows
-- Get special UI treatment during permission requests
+If a skill includes `paths`, it is stored as conditional and is activated only after a touched file path matches one of the patterns. This helps keep the “available skills” list small and relevant.
 
-**Code Reference**: Line 2750+ - checks `Y.command.isModeCommand === !0`
+**Where to look**
+- Conditional storage/activation: `@anthropic-ai/claude-code/cli.js` (search: `conditional skills stored`, `Activated conditional skill`)
 
-### Disable Model Invocation
+### Plugin Namespacing and Permission Wildcards
 
-Skills with `disable-model-invocation: true` cannot be invoked via the Skill tool but can still be used directly as slash commands.
+Plugin prompt commands and skills are typically namespaced with `:` segments (e.g. `my-plugin:pdf`). Permission rules support `:*` wildcards (e.g. `my-plugin:*`) to allow or deny entire namespaces.
 
-**Validation**: Line 2750+ - Error code 4
+### Forked Skills (`context: fork`)
 
-### Context Modifiers
+Forked skills are executed in a sub-agent and return a summarized result string instead of injecting `newMessages` into the main conversation. Use this for workflows that should not interleave with the user’s current turn-by-turn interaction.
 
-Skills can modify the execution context by:
-1. Adding tools to `alwaysAllowRules`
-2. Overriding the model
-3. Setting `maxThinkingTokens`
+### Disabling Slash Commands
 
-**Implementation**: Lines 2750+ in the `call` method's `contextModifier` function
+`--disable-slash-commands` disables parsing/listing of REPL slash commands. It does not remove the underlying `Skill` tool from the runtime; it changes how user input is interpreted and which commands are exposed as slash commands.
 
 ---
 
@@ -668,22 +521,26 @@ Skills can modify the execution context by:
 ### Common Issues
 
 1. **"Unknown skill" Error**
-   - Verify SKILL.md exists in the correct directory
-   - Check plugin is loaded and enabled
-   - Verify skill name matches directory name
+   - Verify the skill is in a loaded location (e.g. `.claude/skills/<name>/SKILL.md` or `~/.claude/skills/<name>/SKILL.md`)
+   - If it’s a plugin skill, verify the plugin is enabled and you’re using the fully qualified name (e.g. `my-plugin:pdf`)
+   - If the skill is conditional (`paths`), it may not be active until relevant files are touched
 
 2. **"disable-model-invocation" Error**
    - Skill has `disable-model-invocation: true`
-   - Use as slash command instead: `/skillname`
+   - Remove the field (or set it to false) to allow running the skill via the `Skill` tool
 
 3. **Permission Denied**
    - Check permission rules in settings
    - Look for deny rules matching skill name or pattern
 
 4. **Skill Not Appearing**
-   - Verify plugin configuration
-   - Check `skillsPath` or `skillsPaths[]` settings
-   - Look for loading errors in logs
+   - The skill may be hidden via `user-invocable: false`
+   - The skill may be conditional (`paths`) and not yet activated
+   - The “available skills” listing is subject to a char budget; less relevant skills may be omitted from the list
+
+5. **Slash commands not working**
+   - Check whether `--disable-slash-commands` is enabled for the session
+   - Ensure you are using `/<skill> ...` format (command name first token, args after)
 
 ---
 
@@ -692,8 +549,8 @@ Skills can modify the execution context by:
 The Claude Code Skills system provides a powerful way to package and reuse specialized AI workflows. By understanding the SKILL.md format, loading mechanisms, and execution flow, you can create effective skills that enhance Claude Code's capabilities.
 
 **Key Takeaways**:
-- Skills are defined in `SKILL.md` files with frontmatter metadata
-- The Skill tool (`sw = "Skill"`) handles validation, permissions, and execution
-- Skills can be invoked via the tool or as slash commands
-- Skills support tool restrictions, model preferences, and permission control
-- The `isSkill` flag differentiates skills from regular commands in the codebase
+- Skills are defined in `SKILL.md` with frontmatter that guides discovery (`when_to_use`), permissions (`allowed-tools`), and execution mode (`context: fork`).
+- The `Skill` tool handles validation, permission checks, and execution (inline or forked).
+- REPL slash commands (`/<skill> [args]`) are a user-facing surface that typically maps to invoking the `Skill` tool.
+- Arguments can be substituted into the skill body via `$ARGUMENTS`, `$1`, `$ARGUMENTS[0]`, and `$<name>` (with `arguments`).
+- Skills can register hooks at invocation time via `hooks` frontmatter, and can be made conditional with `paths`.
